@@ -15,7 +15,9 @@ export default defineConfig({
     user: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
     database: url.pathname.replace(/^\//, ""),
-    ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
+    // drizzle-kit's ssl type is narrower than mysql2's; rejectUnauthorized is
+    // sufficient for TiDB (Node's default TLS minimum is already TLSv1.2).
+    ssl: { rejectUnauthorized: true },
   },
   strict: true,
   verbose: true,
