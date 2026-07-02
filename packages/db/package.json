@@ -10,18 +10,20 @@
     "./schema": "./src/schema.ts"
   },
   "scripts": {
+    "db:ensure": "tsx src/ensure-database.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/seed.ts",
+    "db:setup": "tsx src/ensure-database.ts && drizzle-kit generate && drizzle-kit migrate && tsx src/seed.ts",
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "dotenv": "^17.2.2",
     "drizzle-orm": "^0.44.5",
     "mysql2": "^3.15.0",
     "nanoid": "^5.1.5"
   },
   "devDependencies": {
-    "dotenv": "^17.2.2",
     "drizzle-kit": "^0.31.4",
     "tsx": "^4.19.1",
     "typescript": "5.9.3"

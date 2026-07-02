@@ -10,13 +10,18 @@
     "lint": "turbo run lint",
     "check": "turbo run check",
     "format": "prettier --write .",
+    "db:ensure": "pnpm --filter @pleyad/db db:ensure",
     "db:generate": "pnpm --filter @pleyad/db db:generate",
     "db:migrate": "pnpm --filter @pleyad/db db:migrate",
-    "db:seed": "pnpm --filter @pleyad/db db:seed"
+    "db:seed": "pnpm --filter @pleyad/db db:seed",
+    "db:setup": "pnpm --filter @pleyad/db db:setup"
   },
   "devDependencies": {
     "prettier": "^3.6.2",
     "turbo": "^2.5.0",
     "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
   }
 }

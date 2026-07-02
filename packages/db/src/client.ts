@@ -8,9 +8,18 @@ if (!url) {
   throw new Error("DATABASE_URL is not set. Copy .env.example to .env and fill it in.");
 }
 
-// A single shared pool for the process. TiDB Cloud requires TLS; the `ssl`
-// parameter is carried in the connection string (see .env.example).
-const pool = mysql.createPool(url);
+// Parse the connection string and connect with explicit TLS. TiDB Cloud's public
+// endpoint requires TLS; its gateway presents a publicly-trusted certificate, so
+// Node's built-in CA store verifies it — no CA file needed.
+const parsed = new URL(url);
+const pool = mysql.createPool({
+  host: parsed.hostname,
+  port: Number(parsed.port) || 4000,
+  user: decodeURIComponent(parsed.username),
+  password: decodeURIComponent(parsed.password),
+  database: parsed.pathname.replace(/^\//, ""),
+  ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
+});
 
 export const db = drizzle(pool, { schema, mode: "default" });
 export type DB = typeof db;
