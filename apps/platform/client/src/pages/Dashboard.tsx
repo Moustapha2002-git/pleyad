@@ -1,76 +1,70 @@
-import { useState } from "react";
+import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
+import { DimensionGauges } from "../components/DimensionGauges";
 
 export default function Dashboard() {
   const me = trpc.auth.me.useQuery();
-  const collections = trpc.collections.list.useQuery();
-  const utils = trpc.useUtils();
-  const [title, setTitle] = useState("");
-
-  const create = trpc.collections.create.useMutation({
-    onSuccess: async () => {
-      setTitle("");
-      await utils.collections.list.invalidate();
-    },
-  });
+  const progression = trpc.paths.progression.useQuery();
+  const paths = trpc.paths.list.useQuery();
 
   const firstName = me.data?.name?.split(" ")[0] ?? "there";
+  const active = (paths.data ?? []).filter((p) => p.itemCount > 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-navy">Hi {firstName} 👋</h1>
-        <p className="text-ink/60">Here's your learning space.</p>
+        <p className="text-ink/60">Here's your development at a glance.</p>
       </div>
 
-      {/* "Today" — the V1 centerpiece, scaffolded */}
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-gold">Today</h2>
-        <p className="text-ink/70">
-          Your guided next step will appear here once you start a learning path.
-          <span className="text-ink/40"> (Coming in V1.)</span>
-        </p>
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gold">
+          My progress
+        </h2>
+        {progression.data ? (
+          <DimensionGauges data={progression.data} />
+        ) : (
+          <p className="text-ink/50">Loading…</p>
+        )}
       </section>
 
-      {/* Playlists — proves tenant-scoped data end-to-end in the browser */}
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="mb-4 text-lg font-semibold text-navy">My playlists</h2>
-        <form
-          className="mb-4 flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (title.trim()) create.mutate({ title: title.trim() });
-          }}
-        >
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="New playlist title"
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 outline-none transition focus:border-navy"
-          />
-          <button
-            className="rounded-lg bg-navy px-4 py-2 text-white transition hover:bg-navy-600 disabled:opacity-50"
-            disabled={create.isPending}
-          >
-            Add
-          </button>
-        </form>
-
-        {collections.isLoading ? (
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-navy">Continue learning</h2>
+          <Link to="/paths" className="text-sm text-navy/70 hover:underline">
+            Manage paths →
+          </Link>
+        </div>
+        {paths.isLoading ? (
           <p className="text-ink/50">Loading…</p>
-        ) : collections.data && collections.data.length > 0 ? (
-          <ul className="divide-y divide-gray-100">
-            {collections.data.map((c) => (
-              <li key={c.id} className="flex items-center justify-between py-3">
-                <span className="font-medium text-ink">{c.title}</span>
-                <span className="rounded-full bg-navy/5 px-2 py-0.5 text-xs text-navy/60">
-                  {c.kind}
-                </span>
-              </li>
+        ) : active.length > 0 ? (
+          <div className="space-y-3">
+            {active.map((p) => (
+              <Link
+                key={p.id}
+                to={`/paths/${p.id}`}
+                className="block rounded-xl border border-gray-200 bg-white p-5 transition hover:border-navy/40"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-navy">{p.title}</span>
+                  <span className="text-sm text-ink/50">{p.progress}%</span>
+                </div>
+                <div className="mt-3 h-2 w-full rounded-full bg-gray-100">
+                  <div className="h-2 rounded-full bg-gold" style={{ width: `${p.progress}%` }} />
+                </div>
+              </Link>
             ))}
-          </ul>
+          </div>
         ) : (
-          <p className="text-ink/50">No playlists yet — create your first above.</p>
+          <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center">
+            <p className="text-ink/60">No learning paths yet.</p>
+            <Link
+              to="/paths"
+              className="mt-3 inline-block rounded-lg bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy-600"
+            >
+              Create your first path
+            </Link>
+          </div>
         )}
       </section>
     </div>

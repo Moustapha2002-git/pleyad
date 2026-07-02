@@ -291,3 +291,32 @@ export const collectionItems = mysqlTable(
 
 export type CollectionItem = typeof collectionItems.$inferSelect;
 export type InsertCollectionItem = typeof collectionItems.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────
+// PROGRESSION — the three development dimensions (Savoir / Savoir-faire /
+// Savoir-être). A learning path is tagged with 1–3 dimensions; a learner's
+// per-dimension gauge is DERIVED from their progress on paths feeding it
+// (no stored counters). See docs/roadmap + client V1 plan.
+// ─────────────────────────────────────────────────────────────────────────
+
+export const DIMENSIONS = ["knowledge", "skills", "human_development"] as const;
+export type Dimension = (typeof DIMENSIONS)[number];
+
+/** Which dimension(s) a learning path (collection) feeds. */
+export const collectionDimensions = mysqlTable(
+  "collection_dimensions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    collectionId: int("collection_id")
+      .notNull()
+      .references(() => collections.id),
+    dimension: mysqlEnum("dimension", DIMENSIONS).notNull(),
+  },
+  (t) => ({
+    collectionIdx: index("idx_collection_dimensions_collection").on(t.collectionId),
+    uniquePair: uniqueIndex("uq_collection_dimension").on(t.collectionId, t.dimension),
+  }),
+);
+
+export type CollectionDimension = typeof collectionDimensions.$inferSelect;
+export type InsertCollectionDimension = typeof collectionDimensions.$inferInsert;

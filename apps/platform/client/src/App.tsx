@@ -4,6 +4,8 @@ import { Layout } from "./components/Layout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import Paths from "./pages/Paths";
+import PathDetail from "./pages/PathDetail";
 
 export default function App() {
   const me = trpc.auth.me.useQuery();
@@ -16,24 +18,28 @@ export default function App() {
     );
   }
 
-  const authed = Boolean(me.data);
+  if (!me.data) {
+    return (
+      <Switch>
+        <Route path="/register" component={Register} />
+        <Route path="/login" component={Login} />
+        <Route>
+          <Redirect to="/login" />
+        </Route>
+      </Switch>
+    );
+  }
 
   return (
-    <Switch>
-      <Route path="/login">{authed ? <Redirect to="/" /> : <Login />}</Route>
-      <Route path="/register">{authed ? <Redirect to="/" /> : <Register />}</Route>
-      <Route path="/">
-        {authed ? (
-          <Layout>
-            <Dashboard />
-          </Layout>
-        ) : (
-          <Redirect to="/login" />
-        )}
-      </Route>
-      <Route>
-        <Redirect to="/" />
-      </Route>
-    </Switch>
+    <Layout>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/paths" component={Paths} />
+        <Route path="/paths/:id">{(params) => <PathDetail id={Number(params.id)} />}</Route>
+        <Route>
+          <Redirect to="/" />
+        </Route>
+      </Switch>
+    </Layout>
   );
 }

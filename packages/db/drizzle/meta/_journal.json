@@ -8,6 +8,13 @@
       "when": 1782990660504,
       "tag": "0000_left_spitfire",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1783004143151,
+      "tag": "0001_round_master_chief",
+      "breakpoints": true
     }
   ]
 }
