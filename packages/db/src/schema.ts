@@ -1,0 +1,293 @@
+/**
+ * Pleyad — data model (M1 spine)
+ * ------------------------------------------------------------------------
+ * Design rules encoded here (see docs/architecture.md + docs/adr/0001):
+ *
+ *  1. Multi-tenant, shared schema. Every tenant-scoped row carries
+ *     `organizationId`. A personal workspace IS an organization (type=personal),
+ *     so individuals and companies use the same primitives.
+ *  2. Users are GLOBAL identities; `memberships` grant a user access to an
+ *     organization with a role.
+ *  3. `learningResources` is a CANONICAL, polymorphic catalog:
+ *       - source_type=external → global/shared, deduped by (platform, external_id)
+ *       - source_type=native   → org-owned/private (ownerOrganizationId set)
+ *     Native hosting (video upload) is a Phase-2 switch-on; the discriminator +
+ *     ownership FK exist now so it is additive, never a rewrite (docs/adr — content hosting).
+ *  4. `userActivities` is the user's PERSONAL progress graph (not org-scoped).
+ *     Org completion metrics are DERIVED by matching org-assigned resources to a
+ *     member's activities — which keeps personal learning private by construction.
+ *  5. Externally-exposed entities carry a `publicId` (nanoid) so we never leak
+ *     sequential integer IDs in URLs/APIs.
+ *
+ * Tables anticipated but intentionally NOT built in M1 (they slot onto this spine
+ * without altering it): teams, team_memberships, assignments, invitations.
+ */
+import {
+  boolean,
+  index,
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/mysql-core";
+import { nanoid } from "nanoid";
+
+const publicId = () =>
+  varchar("public_id", { length: 24 })
+    .notNull()
+    .unique()
+    .$defaultFn(() => nanoid());
+
+// ─────────────────────────────────────────────────────────────────────────
+// IDENTITY (global)
+// ─────────────────────────────────────────────────────────────────────────
+
+export const users = mysqlTable("users", {
+  id: int("id").autoincrement().primaryKey(),
+  publicId: publicId(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  name: varchar("name", { length: 255 }),
+  // Auth is wired in M2; the column exists now so the identity table is stable.
+  passwordHash: varchar("password_hash", { length: 255 }),
+  emailVerifiedAt: timestamp("email_verified_at"),
+  avatarUrl: text("avatar_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  lastSignedInAt: timestamp("last_signed_in_at"),
+});
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────
+// TENANCY
+// ─────────────────────────────────────────────────────────────────────────
+
+export const organizations = mysqlTable(
+  "organizations",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    publicId: publicId(),
+    slug: varchar("slug", { length: 100 }).notNull().unique(), // subdomain: <slug>.pleyad.com
+    name: varchar("name", { length: 255 }).notNull(),
+    type: mysqlEnum("type", ["personal", "team"]).default("team").notNull(),
+
+    // ── Branding (white-label). Dormant until Phase 2; fields present now so
+    //    white-labeling is pure product work, not a migration.
+    logoUrl: text("logo_url"),
+    faviconUrl: text("favicon_url"),
+    primaryColor: varchar("primary_color", { length: 9 }),
+    accentColor: varchar("accent_color", { length: 9 }),
+    themeConfig: text("theme_config"), // JSON for future extensibility
+    customDomain: varchar("custom_domain", { length: 255 }).unique(),
+    customDomainVerified: boolean("custom_domain_verified").default(false).notNull(),
+    brandingEnabled: boolean("branding_enabled").default(false).notNull(),
+
+    // ── Billing. Dormant until Phase 2 (Stripe). Billing attaches to the org.
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+    plan: varchar("plan", { length: 50 }).default("free").notNull(),
+    subscriptionStatus: varchar("subscription_status", { length: 50 }),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => ({
+    slugIdx: uniqueIndex("uq_org_slug").on(t.slug),
+  }),
+);
+
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = typeof organizations.$inferInsert;
+
+/** The join that grants a user access to an organization with a role. */
+export const memberships = mysqlTable(
+  "memberships",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("user_id")
+      .notNull()
+      .references(() => users.id),
+    organizationId: int("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    // Full role set now, even though M1 only exercises owner/member.
+    role: mysqlEnum("role", ["owner", "admin", "manager", "mentor", "member"])
+      .default("member")
+      .notNull(),
+    status: mysqlEnum("status", ["active", "invited", "suspended"])
+      .default("active")
+      .notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => ({
+    userOrgUnique: uniqueIndex("uq_membership_user_org").on(t.userId, t.organizationId),
+    orgIdx: index("idx_membership_org").on(t.organizationId),
+  }),
+);
+
+export type Membership = typeof memberships.$inferSelect;
+export type InsertMembership = typeof memberships.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────
+// LEARNING CONTENT (canonical, polymorphic)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * A pointer to "a thing you learn from." External = a shared canonical reference
+ * to public content (deduped globally). Native = private content owned by one org
+ * (Phase 2 hosting). Everything downstream references a resource by id and does not
+ * care which it is — so a path can mix internal + external content freely.
+ */
+export const learningResources = mysqlTable(
+  "learning_resources",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    publicId: publicId(),
+    sourceType: mysqlEnum("source_type", ["external", "native"])
+      .default("external")
+      .notNull(),
+    // NULL = global/shared (external). Set = org-owned/private (native).
+    ownerOrganizationId: int("owner_organization_id").references(() => organizations.id),
+
+    // External-source fields (null for native).
+    platform: mysqlEnum("platform", [
+      "youtube",
+      "coursera",
+      "udemy",
+      "edx",
+      "linkedin",
+      "other",
+    ]),
+    externalId: varchar("external_id", { length: 255 }), // canonical id derived from URL
+    url: varchar("url", { length: 2048 }),
+
+    // Common metadata (both sources).
+    title: varchar("title", { length: 512 }).notNull(),
+    description: text("description"),
+    thumbnailUrl: text("thumbnail_url"),
+    provider: varchar("provider", { length: 255 }), // display author/provider
+    durationSeconds: int("duration_seconds"),
+
+    // Native-asset fields (hosting_provider, playback_id, status, ...) are added
+    // in Phase 2 once a managed video provider is chosen — deliberately deferred.
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => ({
+    // Global dedupe for external resources. Native rows keep these NULL (MySQL
+    // permits multiple NULLs in a unique index), so they never collide.
+    platformExternalUnique: uniqueIndex("uq_resource_platform_external").on(
+      t.platform,
+      t.externalId,
+    ),
+    ownerIdx: index("idx_resource_owner").on(t.ownerOrganizationId),
+  }),
+);
+
+export type LearningResource = typeof learningResources.$inferSelect;
+export type InsertLearningResource = typeof learningResources.$inferInsert;
+
+/**
+ * A user's engagement with a resource — the personal library + the raw material
+ * that org completion metrics are derived from. Global to the user, NOT org-scoped.
+ * Progress arrives either from the extension (external) or the Pleyad player (native);
+ * either way it lands here.
+ */
+export const userActivities = mysqlTable(
+  "user_activities",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("user_id")
+      .notNull()
+      .references(() => users.id),
+    resourceId: int("resource_id")
+      .notNull()
+      .references(() => learningResources.id),
+    status: mysqlEnum("status", ["not_started", "in_progress", "completed", "paused"])
+      .default("not_started")
+      .notNull(),
+    progress: int("progress").default(0).notNull(), // 0–100
+    watchSeconds: int("watch_seconds").default(0).notNull(),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    lastActivityAt: timestamp("last_activity_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => ({
+    userResourceUnique: uniqueIndex("uq_activity_user_resource").on(t.userId, t.resourceId),
+    userIdx: index("idx_activity_user").on(t.userId),
+  }),
+);
+
+export type UserActivity = typeof userActivities.$inferSelect;
+export type InsertUserActivity = typeof userActivities.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────
+// COLLECTIONS (personal playlists AND org learning paths — one structure)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * An ordered set of resources owned by an organization. In a personal workspace
+ * (org.type=personal) these are the user's playlists; in a team workspace they are
+ * assignable learning paths. Same table, because a personal workspace is an org.
+ */
+export const collections = mysqlTable(
+  "collections",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    publicId: publicId(),
+    organizationId: int("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    ownerUserId: int("owner_user_id").references(() => users.id), // creator
+    kind: mysqlEnum("kind", ["playlist", "path"]).default("playlist").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    goal: varchar("goal", { length: 255 }),
+    coverUrl: text("cover_url"),
+    status: mysqlEnum("status", ["active", "archived"]).default("active").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => ({
+    orgIdx: index("idx_collection_org").on(t.organizationId),
+  }),
+);
+
+export type Collection = typeof collections.$inferSelect;
+export type InsertCollection = typeof collections.$inferInsert;
+
+/** A resource inside a collection, with ordering + curation metadata. */
+export const collectionItems = mysqlTable(
+  "collection_items",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    collectionId: int("collection_id")
+      .notNull()
+      .references(() => collections.id),
+    resourceId: int("resource_id")
+      .notNull()
+      .references(() => learningResources.id),
+    position: int("position").default(0).notNull(),
+    section: varchar("section", { length: 255 }), // e.g. "Week 1: Fundamentals"
+    required: boolean("required").default(true).notNull(),
+    notes: text("notes"),
+    addedAt: timestamp("added_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    collectionIdx: index("idx_collection_item_collection").on(t.collectionId),
+    collectionResourceUnique: uniqueIndex("uq_collection_item").on(
+      t.collectionId,
+      t.resourceId,
+    ),
+  }),
+);
+
+export type CollectionItem = typeof collectionItems.$inferSelect;
+export type InsertCollectionItem = typeof collectionItems.$inferInsert;

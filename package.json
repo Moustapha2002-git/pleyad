@@ -1,0 +1,22 @@
+{
+  "name": "pleyad",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@10.4.1",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "check": "turbo run check",
+    "format": "prettier --write .",
+    "db:generate": "pnpm --filter @pleyad/db db:generate",
+    "db:migrate": "pnpm --filter @pleyad/db db:migrate",
+    "db:seed": "pnpm --filter @pleyad/db db:seed"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.0",
+    "typescript": "5.9.3"
+  }
+}
