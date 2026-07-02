@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "types": ["node"],
+    // This is an app, not a published library — it never emits .d.ts files. Turning
+    // off declaration emit avoids TS2742 "inferred type is not portable" errors that
+    // arise when Express types leak through the tRPC context under pnpm's layout.
+    "declaration": false
+  },
+  "include": ["server"]
+}

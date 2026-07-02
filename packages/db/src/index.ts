@@ -5,3 +5,5 @@ export type { DB } from "./client";
 export type { TenantContext } from "./repositories/context";
 export * as collectionsRepo from "./repositories/collections.repo";
 export * as resourcesRepo from "./repositories/resources.repo";
+export * as usersRepo from "./repositories/users.repo";
+export * as organizationsRepo from "./repositories/organizations.repo";
