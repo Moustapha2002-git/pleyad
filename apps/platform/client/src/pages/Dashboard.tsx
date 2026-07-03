@@ -1,6 +1,8 @@
+import { ArrowRight, Plus, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
 import { DimensionGauges } from "../components/DimensionGauges";
+import { Button, Card, EmptyState, ProgressBar, Spinner } from "../components/ui";
 
 export default function Dashboard() {
   const me = trpc.auth.me.useQuery();
@@ -17,76 +19,79 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-navy">Hi {firstName} 👋</h1>
-        <p className="text-ink/60">Here's your development at a glance.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-navy-900">Hi {firstName} 👋</h1>
+        <p className="mt-1 text-ink/55">Here's your development at a glance.</p>
       </div>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gold">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold">
           My progress
         </h2>
-        {progression.data ? (
-          <DimensionGauges data={progression.data} />
-        ) : (
-          <p className="text-ink/50">Loading…</p>
-        )}
+        {progression.data ? <DimensionGauges data={progression.data} /> : <Spinner label="Loading…" />}
       </section>
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-navy">Continue learning</h2>
-          <Link to="/paths" className="text-sm text-navy/70 hover:underline">
-            Manage paths →
+          <h2 className="text-lg font-semibold text-navy-900">Continue learning</h2>
+          <Link
+            to="/paths"
+            className="inline-flex items-center gap-1 text-sm font-medium text-navy/70 transition hover:text-navy"
+          >
+            Manage paths <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
         {paths.isLoading ? (
-          <p className="text-ink/50">Loading…</p>
+          <Spinner label="Loading…" />
         ) : active.length > 0 ? (
           <div className="space-y-3">
             {active.map((p) => (
-              <Link
-                key={p.id}
-                to={`/paths/${p.id}`}
-                className="block rounded-xl border border-gray-200 bg-white p-5 transition hover:border-navy/40"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-navy">{p.title}</span>
-                  <span className="text-sm text-ink/50">{p.progress}%</span>
-                </div>
-                <div className="mt-3 h-2 w-full rounded-full bg-gray-100">
-                  <div className="h-2 rounded-full bg-gold" style={{ width: `${p.progress}%` }} />
-                </div>
+              <Link key={p.id} to={`/paths/${p.id}`}>
+                <Card className="p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-navy-900">{p.title}</span>
+                    <span className="text-sm font-medium text-ink/50">{p.progress}%</span>
+                  </div>
+                  <ProgressBar value={p.progress} className="mt-3" />
+                </Card>
               </Link>
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center">
-            <p className="text-ink/60">No learning paths yet.</p>
-            <Link
-              to="/paths"
-              className="mt-3 inline-block rounded-lg bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy-600"
-            >
-              Create your first path
-            </Link>
-          </div>
+          <EmptyState
+            icon={Plus}
+            title="No learning paths yet"
+            description="Create a guided path and start growing your three dimensions."
+            action={
+              <Link to="/paths">
+                <Button icon={Plus}>Create your first path</Button>
+              </Link>
+            }
+          />
         )}
       </section>
 
       {isPersonal && (
-        <section className="rounded-xl border border-dashed border-navy/30 bg-navy/5 p-5">
-          <h2 className="text-sm font-semibold text-navy">Mentor mode (demo)</h2>
-          <p className="mt-1 text-sm text-ink/60">
-            Become a mentor in the Innovation Academy workspace with two assigned learners, to
-            preview the mentor experience.
-          </p>
-          <button
+        <Card className="flex flex-wrap items-center justify-between gap-4 border-navy/15 bg-navy/[0.03] p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy/10 text-navy">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-navy-900">Mentor mode (demo)</h3>
+              <p className="mt-0.5 max-w-md text-sm text-ink/55">
+                Become a mentor in the Innovation Academy workspace with two assigned learners, to
+                preview the mentor experience.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="secondary"
             onClick={() => setupDemo.mutate()}
             disabled={setupDemo.isPending}
-            className="mt-3 rounded-lg bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy-600 disabled:opacity-50"
           >
             {setupDemo.isPending ? "Setting up…" : "Enable mentor demo"}
-          </button>
-        </section>
+          </Button>
+        </Card>
       )}
     </div>
   );

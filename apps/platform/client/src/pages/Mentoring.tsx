@@ -1,57 +1,60 @@
 import { useState } from "react";
+import { GraduationCap, Video } from "lucide-react";
 import { trpc } from "../lib/trpc";
 import { VideoCall } from "../components/VideoCall";
+import { MessageThread } from "../components/MessageThread";
 import { callRoomName } from "../lib/room";
+import { Avatar, Button, Card, EmptyState, PageHeader, Spinner } from "../components/ui";
 
 export default function Mentoring() {
   const me = trpc.auth.me.useQuery();
   const mentors = trpc.mentor.myMentors.useQuery();
-  const [callWith, setCallWith] = useState<{ id: number; name: string } | null>(null);
+  const [inCall, setInCall] = useState(false);
 
   const orgPublicId = me.data?.activeOrganization?.publicId ?? "";
   const myId = me.data?.id ?? 0;
   const myName = me.data?.name ?? me.data?.email ?? "Learner";
+  const mentor = mentors.data?.[0];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-navy">Mentoring</h1>
-        <p className="text-ink/60">Your mentors in this workspace.</p>
-      </div>
+      <PageHeader title="Mentoring" subtitle="Your mentor in this workspace." />
 
       {mentors.isLoading ? (
-        <p className="text-ink/50">Loading…</p>
-      ) : mentors.data && mentors.data.length > 0 ? (
-        <div className="space-y-3">
-          {mentors.data.map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-5"
-            >
+        <Spinner label="Loading…" />
+      ) : mentor ? (
+        <>
+          <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
+            <div className="flex items-center gap-3">
+              <Avatar name={mentor.name ?? mentor.email ?? "?"} className="h-12 w-12 text-sm" />
               <div>
-                <div className="font-semibold text-navy">{m.name ?? m.email}</div>
-                <div className="text-sm text-ink/50">Mentor</div>
+                <div className="font-semibold text-navy-900">{mentor.name ?? mentor.email}</div>
+                <div className="text-sm text-ink/50">Your mentor</div>
               </div>
-              <button
-                onClick={() => setCallWith({ id: m.id, name: m.name ?? m.email ?? "Mentor" })}
-                className="rounded-lg bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy-600"
-              >
-                Start video call
-              </button>
             </div>
-          ))}
-        </div>
-      ) : (
-        <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-ink/50">
-          No mentor assigned yet.
-        </p>
-      )}
+            <Button icon={Video} onClick={() => setInCall(true)}>
+              Video call
+            </Button>
+          </Card>
 
-      {callWith && (
-        <VideoCall
-          room={callRoomName(orgPublicId, myId, callWith.id)}
-          displayName={myName}
-          onClose={() => setCallWith(null)}
+          {inCall && (
+            <VideoCall
+              room={callRoomName(orgPublicId, myId, mentor.id)}
+              displayName={myName}
+              onClose={() => setInCall(false)}
+            />
+          )}
+
+          <MessageThread
+            withUserId={mentor.id}
+            title={`Messages with ${mentor.name ?? "your mentor"}`}
+          />
+        </>
+      ) : (
+        <EmptyState
+          icon={GraduationCap}
+          title="No mentor assigned yet"
+          description="When a mentor is assigned to you, they'll appear here."
         />
       )}
     </div>

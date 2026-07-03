@@ -1,6 +1,7 @@
 import { Redirect, Route, Switch } from "wouter";
 import { trpc } from "./lib/trpc";
-import { Layout } from "./components/Layout";
+import { AppShell } from "./components/AppShell";
+import { Spinner } from "./components/ui";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
@@ -15,8 +16,8 @@ export default function App() {
 
   if (me.isLoading) {
     return (
-      <div className="flex h-full items-center justify-center text-navy">
-        <span className="animate-pulse text-lg">Loading Pleyad…</span>
+      <div className="flex h-full items-center justify-center">
+        <Spinner label="Loading Pleyad…" />
       </div>
     );
   }
@@ -34,7 +35,7 @@ export default function App() {
   }
 
   return (
-    <Layout>
+    <AppShell>
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/paths" component={Paths} />
@@ -48,6 +49,6 @@ export default function App() {
           <Redirect to="/" />
         </Route>
       </Switch>
-    </Layout>
+    </AppShell>
   );
 }

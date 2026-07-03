@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { ArrowLeft, Check, ExternalLink, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
 import { DimensionChip } from "../components/DimensionGauges";
+import { Button, Card, ProgressBar, Select, Spinner, TextInput, cn } from "../components/ui";
 
 const PLATFORMS = ["youtube", "coursera", "udemy", "edx", "linkedin", "other"] as const;
 type Platform = (typeof PLATFORMS)[number];
@@ -27,18 +29,21 @@ export default function PathDetail({ id }: { id: number }) {
   });
   const setStatus = trpc.paths.setItemStatus.useMutation({ onSuccess: refresh });
 
-  if (path.isLoading) return <p className="text-ink/50">Loading…</p>;
+  if (path.isLoading) return <Spinner label="Loading…" />;
   if (!path.data) return <p className="text-ink/50">Path not found.</p>;
   const p = path.data;
 
   return (
     <div className="space-y-6">
-      <Link to="/paths" className="text-sm text-navy/70 hover:underline">
-        ← All paths
+      <Link
+        to="/paths"
+        className="inline-flex items-center gap-1 text-sm text-navy/60 transition hover:text-navy"
+      >
+        <ArrowLeft className="h-4 w-4" /> All paths
       </Link>
 
       <div>
-        <h1 className="text-2xl font-bold text-navy">{p.title}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-navy-900">{p.title}</h1>
         {p.dimensions.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
             {p.dimensions.map((d) => (
@@ -47,32 +52,42 @@ export default function PathDetail({ id }: { id: number }) {
           </div>
         )}
         <div className="mt-4 flex items-center gap-3">
-          <div className="h-2.5 flex-1 rounded-full bg-gray-100">
-            <div className="h-2.5 rounded-full bg-gold" style={{ width: `${p.progress}%` }} />
-          </div>
-          <span className="text-sm font-medium text-navy">{p.progress}%</span>
+          <ProgressBar value={p.progress} className="flex-1" />
+          <span className="text-sm font-semibold text-navy-900">{p.progress}%</span>
         </div>
       </div>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="mb-4 text-lg font-semibold text-navy">Steps</h2>
+      <Card className="p-6">
+        <h2 className="mb-4 text-base font-semibold text-navy-900">Steps</h2>
         {p.items.length === 0 ? (
           <p className="text-ink/50">No steps yet — add the first below.</p>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="space-y-2">
             {p.items.map((it) => (
-              <li key={it.itemId} className="flex items-center gap-3 py-3">
-                <input
-                  type="checkbox"
-                  checked={it.done}
-                  onChange={(e) =>
-                    setStatus.mutate({ resourceId: it.resourceId, done: e.target.checked })
+              <li
+                key={it.itemId}
+                className="flex items-center gap-3 rounded-xl border border-gray-100 px-3 py-2.5"
+              >
+                <button
+                  onClick={() =>
+                    setStatus.mutate({ resourceId: it.resourceId, done: !it.done })
                   }
-                  className="h-5 w-5 accent-[#0a2540]"
-                />
+                  className={cn(
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition",
+                    it.done
+                      ? "border-navy-900 bg-navy-900 text-white"
+                      : "border-gray-300 text-transparent hover:border-navy/50",
+                  )}
+                  aria-label={it.done ? "Mark not done" : "Mark done"}
+                >
+                  <Check className="h-4 w-4" />
+                </button>
                 <div className="flex-1">
                   <span
-                    className={`font-medium ${it.done ? "text-ink/40 line-through" : "text-ink"}`}
+                    className={cn(
+                      "font-medium",
+                      it.done ? "text-ink/40 line-through" : "text-ink",
+                    )}
                   >
                     {it.title}
                   </span>
@@ -87,19 +102,19 @@ export default function PathDetail({ id }: { id: number }) {
                     href={it.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-sm text-navy/70 hover:underline"
+                    className="inline-flex items-center gap-1 text-sm text-navy/60 transition hover:text-navy"
                   >
-                    Open
+                    Open <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 )}
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </Card>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="mb-4 text-lg font-semibold text-navy">Add a step</h2>
+      <Card className="p-6">
+        <h2 className="mb-4 text-base font-semibold text-navy-900">Add a step</h2>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -108,39 +123,31 @@ export default function PathDetail({ id }: { id: number }) {
           }}
           className="space-y-3"
         >
-          <input
+          <TextInput
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Step title (e.g. Python Basics — Coursera)"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-navy"
           />
-          <div className="flex gap-2">
-            <select
-              value={platform}
-              onChange={(e) => setPlatform(e.target.value as Platform)}
-              className="rounded-lg border border-gray-300 px-3 py-2"
-            >
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Select value={platform} onChange={(e) => setPlatform(e.target.value as Platform)}>
               {PLATFORMS.map((pl) => (
                 <option key={pl} value={pl}>
                   {pl}
                 </option>
               ))}
-            </select>
-            <input
+            </Select>
+            <TextInput
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="URL (optional)"
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-navy"
+              className="flex-1"
             />
           </div>
-          <button
-            disabled={addItem.isPending}
-            className="rounded-lg bg-navy px-4 py-2 text-white transition hover:bg-navy-600 disabled:opacity-50"
-          >
+          <Button type="submit" icon={Plus} disabled={addItem.isPending}>
             Add step
-          </button>
+          </Button>
         </form>
-      </section>
+      </Card>
     </div>
   );
 }

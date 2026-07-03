@@ -1,35 +1,38 @@
+import { ChevronRight, Users } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
+import { Avatar, Card, EmptyState, PageHeader, Spinner } from "../components/ui";
 
 export default function MentorLearners() {
   const learners = trpc.mentor.myLearners.useQuery();
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-navy">My learners</h1>
-        <p className="text-ink/60">Learners assigned to you in this workspace.</p>
-      </div>
+      <PageHeader title="My learners" subtitle="Learners assigned to you in this workspace." />
 
       {learners.isLoading ? (
-        <p className="text-ink/50">Loading…</p>
+        <Spinner label="Loading…" />
       ) : learners.data && learners.data.length > 0 ? (
         <div className="space-y-3">
           {learners.data.map((l) => (
-            <Link
-              key={l.id}
-              to={`/mentor/${l.id}`}
-              className="block rounded-xl border border-gray-200 bg-white p-5 transition hover:border-navy/40 hover:shadow-sm"
-            >
-              <div className="font-semibold text-navy">{l.name ?? l.email}</div>
-              <div className="text-sm text-ink/50">{l.email}</div>
+            <Link key={l.id} to={`/mentor/${l.id}`}>
+              <Card className="flex items-center gap-4 p-4 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]">
+                <Avatar name={l.name ?? l.email ?? "?"} className="h-11 w-11" />
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-navy-900">{l.name ?? l.email}</div>
+                  <div className="truncate text-sm text-ink/50">{l.email}</div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-ink/30" />
+              </Card>
             </Link>
           ))}
         </div>
       ) : (
-        <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-ink/50">
-          No learners assigned yet.
-        </p>
+        <EmptyState
+          icon={Users}
+          title="No learners assigned yet"
+          description="Learners assigned to you will appear here."
+        />
       )}
     </div>
   );

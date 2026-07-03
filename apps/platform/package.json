@@ -21,6 +21,7 @@
     "dotenv": "^17.2.2",
     "express": "^4.21.2",
     "jose": "^6.1.0",
+    "lucide-react": "^0.453.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "superjson": "^1.13.3",

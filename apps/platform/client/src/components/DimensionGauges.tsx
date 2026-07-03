@@ -1,18 +1,34 @@
-const LABELS: Record<string, string> = {
-  knowledge: "Knowledge",
-  skills: "Skills",
-  human_development: "Human Development",
-};
-const SUB: Record<string, string> = {
-  knowledge: "Savoir",
-  skills: "Savoir-faire",
-  human_development: "Savoir-être",
-};
-const CHIP: Record<string, string> = {
-  knowledge: "bg-blue-50 text-blue-700",
-  skills: "bg-emerald-50 text-emerald-700",
-  human_development: "bg-purple-50 text-purple-700",
-};
+import { Brain, HeartHandshake, Wrench } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Card, ProgressBar } from "./ui";
+
+const META = {
+  knowledge: {
+    label: "Knowledge",
+    sub: "Savoir",
+    icon: Brain,
+    bar: "bg-dim-knowledge",
+    tile: "bg-dim-knowledge/10 text-dim-knowledge",
+  },
+  skills: {
+    label: "Skills",
+    sub: "Savoir-faire",
+    icon: Wrench,
+    bar: "bg-dim-skills",
+    tile: "bg-dim-skills/10 text-dim-skills",
+  },
+  human_development: {
+    label: "Human Development",
+    sub: "Savoir-être",
+    icon: HeartHandshake,
+    bar: "bg-dim-human",
+    tile: "bg-dim-human/10 text-dim-human",
+  },
+} satisfies Record<string, { label: string; sub: string; icon: LucideIcon; bar: string; tile: string }>;
+
+function metaFor(dimension: string) {
+  return META[dimension as keyof typeof META] ?? META.knowledge;
+}
 
 export function DimensionGauges({
   data,
@@ -21,37 +37,44 @@ export function DimensionGauges({
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-3">
-      {data.map((d) => (
-        <div key={d.dimension} className="rounded-xl border border-gray-200 bg-white p-5">
-          <div className="flex items-baseline justify-between">
-            <span className="font-semibold text-navy">{LABELS[d.dimension] ?? d.dimension}</span>
-            <span className="text-xs uppercase tracking-wide text-ink/40">{SUB[d.dimension]}</span>
-          </div>
-          <div className="mt-3 text-3xl font-bold text-navy">
-            {d.score}
-            <span className="text-lg text-ink/40">%</span>
-          </div>
-          <div className="mt-2 h-2.5 w-full rounded-full bg-gray-100">
-            <div
-              className="h-2.5 rounded-full bg-gold transition-all"
-              style={{ width: `${d.score}%` }}
-            />
-          </div>
-          <div className="mt-2 text-xs text-ink/50">
-            {d.pathCount} path{d.pathCount === 1 ? "" : "s"}
-          </div>
-        </div>
-      ))}
+      {data.map((d) => {
+        const m = metaFor(d.dimension);
+        const Icon = m.icon;
+        return (
+          <Card key={d.dimension} className="p-5">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${m.tile}`}>
+                <Icon className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="font-semibold text-navy-900">{m.label}</div>
+                <div className="text-[11px] uppercase tracking-wide text-ink/40">{m.sub}</div>
+              </div>
+            </div>
+            <div className="mt-4 flex items-end justify-between">
+              <span className="text-3xl font-bold text-navy-900">
+                {d.score}
+                <span className="text-lg text-ink/40">%</span>
+              </span>
+              <span className="text-xs text-ink/45">
+                {d.pathCount} path{d.pathCount === 1 ? "" : "s"}
+              </span>
+            </div>
+            <ProgressBar value={d.score} className="mt-3" barClassName={m.bar} />
+          </Card>
+        );
+      })}
     </div>
   );
 }
 
 export function DimensionChip({ dimension }: { dimension: string }) {
+  const m = metaFor(dimension);
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-xs font-medium ${CHIP[dimension] ?? "bg-gray-100 text-gray-600"}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${m.tile}`}
     >
-      {LABELS[dimension] ?? dimension}
+      {m.label}
     </span>
   );
 }

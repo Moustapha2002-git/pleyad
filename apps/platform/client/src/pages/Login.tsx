@@ -24,13 +24,14 @@ export default function Login() {
       footer={
         <>
           No account?{" "}
-          <Link to="/register" className="font-medium text-navy underline">
+          <Link to="/register" className="font-semibold text-navy underline">
             Create one
           </Link>
         </>
       }
     >
       <form
+        className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           login.mutate({ email, password });
@@ -50,8 +51,8 @@ export default function Login() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        {login.error && <p className="mb-3 text-sm text-red-600">{login.error.message}</p>}
-        <Button type="submit" disabled={login.isPending}>
+        {login.error && <p className="text-sm text-red-600">{login.error.message}</p>}
+        <Button type="submit" className="w-full" disabled={login.isPending}>
           {login.isPending ? "Signing in…" : "Sign in"}
         </Button>
       </form>

@@ -1,12 +1,14 @@
 import { useState } from "react";
+import { Route as RouteIcon } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
 import { DimensionChip } from "../components/DimensionGauges";
+import { Button, Card, EmptyState, PageHeader, ProgressBar, Spinner, TextInput, cn } from "../components/ui";
 
 const ALL_DIMENSIONS = [
-  { key: "knowledge", label: "Knowledge (Savoir)" },
-  { key: "skills", label: "Skills (Savoir-faire)" },
-  { key: "human_development", label: "Human Development (Savoir-être)" },
+  { key: "knowledge", label: "Knowledge" },
+  { key: "skills", label: "Skills" },
+  { key: "human_development", label: "Human Development" },
 ] as const;
 
 type Dim = (typeof ALL_DIMENSIONS)[number]["key"];
@@ -31,13 +33,13 @@ export default function Paths() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-navy">Learning paths</h1>
-        <p className="text-ink/60">Guided sequences that grow your three dimensions.</p>
-      </div>
+      <PageHeader
+        title="Learning paths"
+        subtitle="Guided sequences that grow your three dimensions."
+      />
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="mb-4 text-lg font-semibold text-navy">Create a path</h2>
+      <Card className="p-6">
+        <h2 className="mb-4 text-base font-semibold text-navy-900">Create a path</h2>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -45,11 +47,10 @@ export default function Paths() {
           }}
           className="space-y-4"
         >
-          <input
+          <TextInput
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Path title (e.g. Junior Developer Training)"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-navy"
           />
           <div className="flex flex-wrap gap-2">
             {ALL_DIMENSIONS.map((d) => (
@@ -57,59 +58,55 @@ export default function Paths() {
                 type="button"
                 key={d.key}
                 onClick={() => toggle(d.key)}
-                className={`rounded-full border px-3 py-1 text-sm transition ${
+                className={cn(
+                  "rounded-full border px-3.5 py-1.5 text-sm font-medium transition",
                   dims.includes(d.key)
-                    ? "border-navy bg-navy text-white"
-                    : "border-gray-300 text-ink/70 hover:border-navy/40"
-                }`}
+                    ? "border-navy-900 bg-navy-900 text-white"
+                    : "border-gray-200 text-ink/70 hover:border-navy/40",
+                )}
               >
                 {d.label}
               </button>
             ))}
           </div>
-          <button
-            disabled={create.isPending}
-            className="rounded-lg bg-navy px-4 py-2 text-white transition hover:bg-navy-600 disabled:opacity-50"
-          >
-            Create path
-          </button>
+          <Button type="submit" disabled={create.isPending}>
+            {create.isPending ? "Creating…" : "Create path"}
+          </Button>
         </form>
-      </section>
+      </Card>
 
-      <section className="space-y-3">
-        {paths.isLoading ? (
-          <p className="text-ink/50">Loading…</p>
-        ) : paths.data && paths.data.length > 0 ? (
-          paths.data.map((p) => (
-            <Link
-              key={p.id}
-              to={`/paths/${p.id}`}
-              className="block rounded-xl border border-gray-200 bg-white p-5 transition hover:border-navy/40 hover:shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-semibold text-navy">{p.title}</span>
-                <span className="text-sm text-ink/50">
-                  {p.completedCount}/{p.itemCount} done
-                </span>
-              </div>
-              {p.dimensions.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {p.dimensions.map((d) => (
-                    <DimensionChip key={d} dimension={d} />
-                  ))}
+      {paths.isLoading ? (
+        <Spinner label="Loading…" />
+      ) : paths.data && paths.data.length > 0 ? (
+        <div className="space-y-3">
+          {paths.data.map((p) => (
+            <Link key={p.id} to={`/paths/${p.id}`}>
+              <Card className="p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-semibold text-navy-900">{p.title}</span>
+                  <span className="text-sm text-ink/50">
+                    {p.completedCount}/{p.itemCount} done
+                  </span>
                 </div>
-              )}
-              <div className="mt-3 h-2 w-full rounded-full bg-gray-100">
-                <div className="h-2 rounded-full bg-gold" style={{ width: `${p.progress}%` }} />
-              </div>
+                {p.dimensions.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {p.dimensions.map((d) => (
+                      <DimensionChip key={d} dimension={d} />
+                    ))}
+                  </div>
+                )}
+                <ProgressBar value={p.progress} className="mt-3" />
+              </Card>
             </Link>
-          ))
-        ) : (
-          <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-ink/50">
-            No paths yet — create your first above.
-          </p>
-        )}
-      </section>
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon={RouteIcon}
+          title="No paths yet"
+          description="Create your first learning path above to start tracking progress."
+        />
+      )}
     </div>
   );
 }

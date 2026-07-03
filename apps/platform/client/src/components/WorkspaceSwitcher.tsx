@@ -1,3 +1,4 @@
+import { ChevronsUpDown } from "lucide-react";
 import { trpc } from "../lib/trpc";
 
 export function WorkspaceSwitcher() {
@@ -9,25 +10,33 @@ export function WorkspaceSwitcher() {
 
   const current = me.data?.activeOrganization?.publicId ?? "";
   const name = me.data?.activeOrganization?.name ?? "Personal workspace";
+  const type = me.data?.activeOrganization?.type;
+  const dot = type === "team" ? "bg-gold" : "bg-navy-600";
 
   if (!workspaces.data || workspaces.data.length <= 1) {
     return (
-      <span className="rounded-full bg-navy/5 px-3 py-1 text-sm text-navy/70">{name}</span>
+      <div className="flex items-center gap-2 rounded-xl bg-navy/5 px-3 py-1.5">
+        <span className={`h-2 w-2 rounded-full ${dot}`} />
+        <span className="text-sm font-medium text-navy-900">{name}</span>
+      </div>
     );
   }
 
   return (
-    <select
-      value={current}
-      onChange={(e) => switchWs.mutate({ organizationPublicId: e.target.value })}
-      className="rounded-full border border-gray-300 bg-white px-3 py-1 text-sm text-navy"
-    >
-      {workspaces.data.map((w) => (
-        <option key={w.publicId} value={w.publicId}>
-          {w.name}
-          {w.type === "personal" ? " (personal)" : ""}
-        </option>
-      ))}
-    </select>
+    <div className="relative flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 transition hover:bg-gray-50">
+      <span className={`h-2 w-2 rounded-full ${dot}`} />
+      <select
+        value={current}
+        onChange={(e) => switchWs.mutate({ organizationPublicId: e.target.value })}
+        className="appearance-none bg-transparent pr-5 text-sm font-medium text-navy-900 outline-none"
+      >
+        {workspaces.data.map((w) => (
+          <option key={w.publicId} value={w.publicId}>
+            {w.name}
+          </option>
+        ))}
+      </select>
+      <ChevronsUpDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-ink/40" />
+    </div>
   );
 }

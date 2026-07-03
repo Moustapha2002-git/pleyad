@@ -25,13 +25,14 @@ export default function Register() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-navy underline">
+          <Link to="/login" className="font-semibold text-navy underline">
             Sign in
           </Link>
         </>
       }
     >
       <form
+        className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           register.mutate({ name, email, password });
@@ -58,10 +59,8 @@ export default function Register() {
           required
           minLength={8}
         />
-        {register.error && (
-          <p className="mb-3 text-sm text-red-600">{register.error.message}</p>
-        )}
-        <Button type="submit" disabled={register.isPending}>
+        {register.error && <p className="text-sm text-red-600">{register.error.message}</p>}
+        <Button type="submit" className="w-full" disabled={register.isPending}>
           {register.isPending ? "Creating…" : "Create my space"}
         </Button>
       </form>
