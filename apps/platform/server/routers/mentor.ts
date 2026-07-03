@@ -9,6 +9,11 @@ export const mentorRouter = router({
     mentorshipRepo.getLearnersForMentor(db, ctx.tenant.organizationId, ctx.tenant.userId),
   ),
 
+  /** Mentors assigned to the current user (as learner) in the active workspace. */
+  myMentors: tenantProcedure.query(({ ctx }) =>
+    mentorshipRepo.getMentorsForLearner(db, ctx.tenant.organizationId, ctx.tenant.userId),
+  ),
+
   /** A learner's "progress CV": their 3-dimension gauges + paths. Guarded. */
   learnerProfile: tenantProcedure
     .input(z.object({ learnerId: z.number() }))

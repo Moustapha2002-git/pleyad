@@ -8,6 +8,7 @@ import Paths from "./pages/Paths";
 import PathDetail from "./pages/PathDetail";
 import MentorLearners from "./pages/MentorLearners";
 import LearnerProfile from "./pages/LearnerProfile";
+import Mentoring from "./pages/Mentoring";
 
 export default function App() {
   const me = trpc.auth.me.useQuery();
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/mentor/:learnerId">
           {(params) => <LearnerProfile learnerId={Number(params.learnerId)} />}
         </Route>
+        <Route path="/mentoring" component={Mentoring} />
         <Route>
           <Redirect to="/" />
         </Route>

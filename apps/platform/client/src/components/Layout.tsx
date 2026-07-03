@@ -26,6 +26,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const role = me.data?.activeOrganization?.role;
   const isMentor = role === "mentor" || role === "admin" || role === "owner";
   const inOrg = me.data?.activeOrganization?.type === "team";
+  const isLearnerInOrg = inOrg && role === "member";
 
   return (
     <div className="min-h-full bg-gray-50">
@@ -36,6 +37,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <NavLink to="/" label="Dashboard" />
             <NavLink to="/paths" label="Learning paths" />
             {isMentor && inOrg && <NavLink to="/mentor" label="My learners" />}
+            {isLearnerInOrg && <NavLink to="/mentoring" label="Mentoring" />}
           </nav>
         </div>
         <div className="flex items-center gap-4">

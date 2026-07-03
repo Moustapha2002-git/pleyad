@@ -53,6 +53,29 @@ export async function getLearnersForMentor(
     );
 }
 
+/** Mentors assigned to a learner in an organization (learner-facing). */
+export async function getMentorsForLearner(
+  db: DB,
+  organizationId: number,
+  learnerUserId: number,
+) {
+  return db
+    .select({
+      id: users.id,
+      publicId: users.publicId,
+      name: users.name,
+      email: users.email,
+    })
+    .from(mentorAssignments)
+    .innerJoin(users, eq(mentorAssignments.mentorUserId, users.id))
+    .where(
+      and(
+        eq(mentorAssignments.organizationId, organizationId),
+        eq(mentorAssignments.learnerUserId, learnerUserId),
+      ),
+    );
+}
+
 /** Authorization check: is `mentorUserId` the mentor of `learnerUserId` in this org? */
 export async function isMentorOf(
   db: DB,

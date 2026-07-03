@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
 import { DimensionGauges } from "../components/DimensionGauges";
+import { VideoCall } from "../components/VideoCall";
+import { callRoomName } from "../lib/room";
 
 export default function LearnerProfile({ learnerId }: { learnerId: number }) {
   const me = trpc.auth.me.useQuery();
@@ -9,6 +11,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
   const thread = trpc.messages.thread.useQuery({ withUserId: learnerId });
   const utils = trpc.useUtils();
   const [body, setBody] = useState("");
+  const [inCall, setInCall] = useState(false);
 
   const send = trpc.messages.send.useMutation({
     onSuccess: async () => {
@@ -27,10 +30,30 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
         ← My learners
       </Link>
 
-      <div>
-        <h1 className="text-2xl font-bold text-navy">{p.learner.name ?? p.learner.email}</h1>
-        <p className="text-ink/50">{p.learner.email}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-navy">{p.learner.name ?? p.learner.email}</h1>
+          <p className="text-ink/50">{p.learner.email}</p>
+        </div>
+        <button
+          onClick={() => setInCall(true)}
+          className="shrink-0 rounded-lg bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy-600"
+        >
+          Start video call
+        </button>
       </div>
+
+      {inCall && me.data && (
+        <VideoCall
+          room={callRoomName(
+            me.data.activeOrganization?.publicId ?? "",
+            me.data.id,
+            learnerId,
+          )}
+          displayName={me.data.name ?? me.data.email ?? "Mentor"}
+          onClose={() => setInCall(false)}
+        />
+      )}
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gold">
