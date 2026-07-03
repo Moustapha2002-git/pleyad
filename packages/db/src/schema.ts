@@ -320,3 +320,64 @@ export const collectionDimensions = mysqlTable(
 
 export type CollectionDimension = typeof collectionDimensions.$inferSelect;
 export type InsertCollectionDimension = typeof collectionDimensions.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────
+// MENTORSHIP — a mentor is a member (role=mentor) assigned to learners within
+// an organization. Assignment is org-scoped; a learner can have a mentor in one
+// org and not another. (Admin assignment UI is Phase 2; V1 seeds the link.)
+// ─────────────────────────────────────────────────────────────────────────
+
+export const mentorAssignments = mysqlTable(
+  "mentor_assignments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    organizationId: int("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    mentorUserId: int("mentor_user_id")
+      .notNull()
+      .references(() => users.id),
+    learnerUserId: int("learner_user_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    orgIdx: index("idx_mentor_assignments_org").on(t.organizationId),
+    uniqueTriple: uniqueIndex("uq_mentor_assignment").on(
+      t.organizationId,
+      t.mentorUserId,
+      t.learnerUserId,
+    ),
+  }),
+);
+
+export type MentorAssignment = typeof mentorAssignments.$inferSelect;
+export type InsertMentorAssignment = typeof mentorAssignments.$inferInsert;
+
+/** Simple 1:1 messaging within an organization (mentor ↔ learner in V1). */
+export const messages = mysqlTable(
+  "messages",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    organizationId: int("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    senderUserId: int("sender_user_id")
+      .notNull()
+      .references(() => users.id),
+    recipientUserId: int("recipient_user_id")
+      .notNull()
+      .references(() => users.id),
+    body: text("body").notNull(),
+    readAt: timestamp("read_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    orgIdx: index("idx_messages_org").on(t.organizationId),
+    pairIdx: index("idx_messages_pair").on(t.senderUserId, t.recipientUserId),
+  }),
+);
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;

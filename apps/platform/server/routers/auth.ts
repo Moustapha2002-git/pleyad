@@ -15,7 +15,15 @@ export const authRouter = router({
       publicId: ctx.user.publicId,
       email: ctx.user.email,
       name: ctx.user.name,
-      activeOrganizationId: ctx.tenant?.organizationId ?? null,
+      activeOrganization: ctx.tenant
+        ? {
+            id: ctx.tenant.organizationId,
+            publicId: ctx.tenant.organizationPublicId,
+            name: ctx.tenant.organizationName,
+            type: ctx.tenant.organizationType,
+            role: ctx.tenant.role,
+          }
+        : null,
     };
   }),
 

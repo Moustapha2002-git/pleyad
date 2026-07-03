@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
 function NavLink({ to, label }: { to: string; label: string }) {
   const [location] = useLocation();
@@ -22,6 +23,10 @@ export function Layout({ children }: { children: ReactNode }) {
     onSuccess: () => utils.auth.me.invalidate(),
   });
 
+  const role = me.data?.activeOrganization?.role;
+  const isMentor = role === "mentor" || role === "admin" || role === "owner";
+  const inOrg = me.data?.activeOrganization?.type === "team";
+
   return (
     <div className="min-h-full bg-gray-50">
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
@@ -30,13 +35,14 @@ export function Layout({ children }: { children: ReactNode }) {
           <nav className="hidden gap-5 sm:flex">
             <NavLink to="/" label="Dashboard" />
             <NavLink to="/paths" label="Learning paths" />
+            {isMentor && inOrg && <NavLink to="/mentor" label="My learners" />}
           </nav>
         </div>
         <div className="flex items-center gap-4">
-          <span className="hidden rounded-full bg-navy/5 px-3 py-1 text-sm text-navy/70 sm:inline">
-            Personal workspace
+          <WorkspaceSwitcher />
+          <span className="hidden text-sm text-ink/70 sm:inline">
+            {me.data?.name ?? me.data?.email}
           </span>
-          <span className="text-sm text-ink/70">{me.data?.name ?? me.data?.email}</span>
           <button
             onClick={() => logout.mutate()}
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm transition hover:bg-gray-100"

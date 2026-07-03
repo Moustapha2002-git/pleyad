@@ -22,7 +22,13 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
     if (uid) user = await usersRepo.getUserById(db, uid);
   }
 
-  let tenant: { organizationId: number; role: Role } | null = null;
+  let tenant: {
+    organizationId: number;
+    organizationPublicId: string;
+    organizationName: string;
+    organizationType: "personal" | "team";
+    role: Role;
+  } | null = null;
   if (user) {
     const memberships = await organizationsRepo.getUserMemberships(db, user.id);
     if (memberships.length > 0) {
@@ -34,7 +40,13 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
         memberships.find((m) => m.organization.type === "personal") ??
         memberships[0];
       if (chosen) {
-        tenant = { organizationId: chosen.organization.id, role: chosen.membership.role };
+        tenant = {
+          organizationId: chosen.organization.id,
+          organizationPublicId: chosen.organization.publicId,
+          organizationName: chosen.organization.name,
+          organizationType: chosen.organization.type,
+          role: chosen.membership.role,
+        };
       }
     }
   }

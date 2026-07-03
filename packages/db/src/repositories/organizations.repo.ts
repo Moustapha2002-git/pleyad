@@ -51,3 +51,37 @@ export async function getMembership(db: DB, userId: number, organizationId: numb
     .where(and(eq(memberships.userId, userId), eq(memberships.organizationId, organizationId)));
   return rows[0] ?? null;
 }
+
+export async function getOrganizationBySlug(db: DB, slug: string) {
+  const rows = await db.select().from(organizations).where(eq(organizations.slug, slug));
+  return rows[0] ?? null;
+}
+
+type Role = "owner" | "admin" | "manager" | "mentor" | "member";
+
+/** Idempotently add a user to an organization with a role. */
+export async function joinOrganization(
+  db: DB,
+  userId: number,
+  organizationId: number,
+  role: Role = "member",
+) {
+  const existing = await getMembership(db, userId, organizationId);
+  if (existing) return existing;
+  await db.insert(memberships).values({ userId, organizationId, role, status: "active" });
+  const created = await getMembership(db, userId, organizationId);
+  if (!created) throw new Error("Failed to create membership");
+  return created;
+}
+
+export async function setMembershipRole(
+  db: DB,
+  userId: number,
+  organizationId: number,
+  role: Role,
+) {
+  await db
+    .update(memberships)
+    .set({ role })
+    .where(and(eq(memberships.userId, userId), eq(memberships.organizationId, organizationId)));
+}

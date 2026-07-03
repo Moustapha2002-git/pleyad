@@ -19,3 +19,14 @@ export function setSessionCookie(res: Response, token: string) {
 export function clearSessionCookie(res: Response) {
   res.clearCookie(SESSION_COOKIE, { path: "/" });
 }
+
+/** Remembers which workspace (organization) the user is currently viewing. */
+export function setActiveOrgCookie(res: Response, organizationPublicId: string) {
+  res.cookie(ACTIVE_ORG_COOKIE, organizationPublicId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: THIRTY_DAYS_MS,
+    path: "/",
+  });
+}

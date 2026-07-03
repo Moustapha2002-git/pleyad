@@ -6,9 +6,13 @@ export default function Dashboard() {
   const me = trpc.auth.me.useQuery();
   const progression = trpc.paths.progression.useQuery();
   const paths = trpc.paths.list.useQuery();
+  const setupDemo = trpc.dev.setupMentorDemo.useMutation({
+    onSuccess: () => window.location.assign("/mentor"),
+  });
 
   const firstName = me.data?.name?.split(" ")[0] ?? "there";
   const active = (paths.data ?? []).filter((p) => p.itemCount > 0);
+  const isPersonal = me.data?.activeOrganization?.type !== "team";
 
   return (
     <div className="space-y-8">
@@ -67,6 +71,23 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      {isPersonal && (
+        <section className="rounded-xl border border-dashed border-navy/30 bg-navy/5 p-5">
+          <h2 className="text-sm font-semibold text-navy">Mentor mode (demo)</h2>
+          <p className="mt-1 text-sm text-ink/60">
+            Become a mentor in the Innovation Academy workspace with two assigned learners, to
+            preview the mentor experience.
+          </p>
+          <button
+            onClick={() => setupDemo.mutate()}
+            disabled={setupDemo.isPending}
+            className="mt-3 rounded-lg bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy-600 disabled:opacity-50"
+          >
+            {setupDemo.isPending ? "Setting up…" : "Enable mentor demo"}
+          </button>
+        </section>
+      )}
     </div>
   );
 }

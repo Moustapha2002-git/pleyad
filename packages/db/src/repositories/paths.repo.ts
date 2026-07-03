@@ -1,5 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import type { DB } from "../client";
 import {
   collectionDimensions,
   collectionItems,
@@ -38,35 +39,30 @@ export async function createPath(
   return pathId;
 }
 
-export async function listPaths(ctx: TenantContext) {
-  const paths = await ctx.db
+export async function listPathsForUser(db: DB, organizationId: number, userId: number) {
+  const paths = await db
     .select()
     .from(collections)
-    .where(
-      and(eq(collections.organizationId, ctx.organizationId), eq(collections.kind, "path")),
-    );
+    .where(and(eq(collections.organizationId, organizationId), eq(collections.kind, "path")));
   if (paths.length === 0) return [];
 
   const pathIds = paths.map((p) => p.id);
-  const dims = await ctx.db
+  const dims = await db
     .select()
     .from(collectionDimensions)
     .where(inArray(collectionDimensions.collectionId, pathIds));
-  const items = await ctx.db
+  const items = await db
     .select()
     .from(collectionItems)
     .where(inArray(collectionItems.collectionId, pathIds));
 
   const resourceIds = items.map((i) => i.resourceId);
   const acts = resourceIds.length
-    ? await ctx.db
+    ? await db
         .select()
         .from(userActivities)
         .where(
-          and(
-            eq(userActivities.userId, ctx.userId),
-            inArray(userActivities.resourceId, resourceIds),
-          ),
+          and(eq(userActivities.userId, userId), inArray(userActivities.resourceId, resourceIds)),
         )
     : [];
   const doneResourceIds = new Set(
@@ -88,6 +84,10 @@ export async function listPaths(ctx: TenantContext) {
       progress: total > 0 ? Math.round((completed / total) * 100) : 0,
     };
   });
+}
+
+export async function listPaths(ctx: TenantContext) {
+  return listPathsForUser(ctx.db, ctx.organizationId, ctx.userId);
 }
 
 export async function getPath(ctx: TenantContext, id: number) {
@@ -231,8 +231,8 @@ export async function setItemStatus(ctx: TenantContext, resourceId: number, done
 }
 
 /** The learner's three development gauges — average progress across paths feeding each. */
-export async function getProgression(ctx: TenantContext) {
-  const paths = await listPaths(ctx);
+export async function getProgressionForUser(db: DB, organizationId: number, userId: number) {
+  const paths = await listPathsForUser(db, organizationId, userId);
   const dimensions: Dimension[] = ["knowledge", "skills", "human_development"];
   return dimensions.map((dimension) => {
     const relevant = paths.filter((p) => p.dimensions.includes(dimension));
@@ -241,4 +241,8 @@ export async function getProgression(ctx: TenantContext) {
       : 0;
     return { dimension, score, pathCount: relevant.length };
   });
+}
+
+export async function getProgression(ctx: TenantContext) {
+  return getProgressionForUser(ctx.db, ctx.organizationId, ctx.userId);
 }
