@@ -9,6 +9,8 @@ import { Avatar, Button, Card, EmptyState, PageHeader, Spinner } from "../compon
 export default function Mentoring() {
   const me = trpc.auth.me.useQuery();
   const mentors = trpc.mentor.myMentors.useQuery();
+  const ring = trpc.calls.ring.useMutation();
+  const cancel = trpc.calls.cancel.useMutation();
   const [inCall, setInCall] = useState(false);
 
   const orgPublicId = me.data?.activeOrganization?.publicId ?? "";
@@ -32,7 +34,16 @@ export default function Mentoring() {
                 <div className="text-sm text-ink/50">Your mentor</div>
               </div>
             </div>
-            <Button icon={Video} onClick={() => setInCall(true)}>
+            <Button
+              icon={Video}
+              onClick={() => {
+                ring.mutate({
+                  toUserId: mentor.id,
+                  room: callRoomName(orgPublicId, myId, mentor.id),
+                });
+                setInCall(true);
+              }}
+            >
               Video call
             </Button>
           </Card>
@@ -41,7 +52,10 @@ export default function Mentoring() {
             <VideoCall
               room={callRoomName(orgPublicId, myId, mentor.id)}
               displayName={myName}
-              onClose={() => setInCall(false)}
+              onClose={() => {
+                cancel.mutate({ toUserId: mentor.id });
+                setInCall(false);
+              }}
             />
           )}
 

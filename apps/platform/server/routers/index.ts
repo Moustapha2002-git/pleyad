@@ -1,5 +1,6 @@
 import { router } from "../trpc";
 import { authRouter } from "./auth";
+import { callsRouter } from "./calls";
 import { collectionsRouter } from "./collections";
 import { devRouter } from "./dev";
 import { mentorRouter } from "./mentor";
@@ -14,6 +15,7 @@ export const appRouter = router({
   org: orgRouter,
   mentor: mentorRouter,
   messages: messagesRouter,
+  calls: callsRouter,
   dev: devRouter,
 });
 

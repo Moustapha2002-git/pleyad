@@ -11,7 +11,22 @@ import { Avatar, Button, Card, ProgressBar, Spinner } from "../components/ui";
 export default function LearnerProfile({ learnerId }: { learnerId: number }) {
   const me = trpc.auth.me.useQuery();
   const profile = trpc.mentor.learnerProfile.useQuery({ learnerId });
+  const ring = trpc.calls.ring.useMutation();
+  const cancel = trpc.calls.cancel.useMutation();
   const [inCall, setInCall] = useState(false);
+
+  const room = me.data
+    ? callRoomName(me.data.activeOrganization?.publicId ?? "", me.data.id, learnerId)
+    : "";
+
+  const startCall = () => {
+    if (room) ring.mutate({ toUserId: learnerId, room }); // ring the learner
+    setInCall(true);
+  };
+  const endCall = () => {
+    cancel.mutate({ toUserId: learnerId });
+    setInCall(false);
+  };
 
   if (profile.isLoading) return <Spinner label="Loading…" />;
   if (!profile.data) return <p className="text-ink/50">Not found.</p>;
@@ -35,16 +50,16 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
             <p className="text-ink/50">{p.learner.email}</p>
           </div>
         </div>
-        <Button icon={Video} onClick={() => setInCall(true)}>
+        <Button icon={Video} onClick={startCall}>
           Video call
         </Button>
       </div>
 
       {inCall && me.data && (
         <VideoCall
-          room={callRoomName(me.data.activeOrganization?.publicId ?? "", me.data.id, learnerId)}
+          room={room}
           displayName={me.data.name ?? me.data.email ?? "Mentor"}
-          onClose={() => setInCall(false)}
+          onClose={endCall}
         />
       )}
 

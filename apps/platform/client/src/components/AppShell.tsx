@@ -11,6 +11,7 @@ import type { LucideIcon } from "lucide-react";
 import { trpc } from "../lib/trpc";
 import { Avatar, cn } from "./ui";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
+import { IncomingCallBanner } from "./IncomingCallBanner";
 
 type NavItem = { to: string; label: string; icon: LucideIcon };
 
@@ -77,6 +78,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-full">
+      {/* Global incoming-call ringer — shows on any page */}
+      <IncomingCallBanner />
+
       {/* Sidebar — desktop */}
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-navy-950 px-4 py-6 md:flex">
         <div className="px-2">
