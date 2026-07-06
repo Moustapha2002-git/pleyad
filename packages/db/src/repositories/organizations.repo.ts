@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { DB } from "../client";
-import { memberships, organizations } from "../schema";
+import { memberships, organizations, users } from "../schema";
 import type { User } from "../schema";
 
 /**
@@ -84,4 +84,19 @@ export async function setMembershipRole(
     .update(memberships)
     .set({ role })
     .where(and(eq(memberships.userId, userId), eq(memberships.organizationId, organizationId)));
+}
+
+/** All members of an organization (for the admin console). */
+export async function getOrganizationMembers(db: DB, organizationId: number) {
+  return db
+    .select({
+      userId: users.id,
+      name: users.name,
+      email: users.email,
+      role: memberships.role,
+      status: memberships.status,
+    })
+    .from(memberships)
+    .innerJoin(users, eq(memberships.userId, users.id))
+    .where(eq(memberships.organizationId, organizationId));
 }

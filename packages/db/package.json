@@ -14,6 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/seed.ts",
+    "db:make-admin": "tsx src/make-admin.ts",
     "db:setup": "tsx src/ensure-database.ts && drizzle-kit generate && drizzle-kit migrate && tsx src/seed.ts",
     "check": "tsc --noEmit"
   },

@@ -36,3 +36,11 @@ export const tenantProcedure = protectedProcedure.use(({ ctx, next }) => {
   };
   return next({ ctx: { ...ctx, tenant } });
 });
+
+/** Requires the active member to be an owner or admin of the workspace. */
+export const adminProcedure = tenantProcedure.use(({ ctx, next }) => {
+  if (ctx.tenant.role !== "owner" && ctx.tenant.role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Admins only" });
+  }
+  return next({ ctx });
+});

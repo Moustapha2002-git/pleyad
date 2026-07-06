@@ -76,6 +76,35 @@ export async function getMentorsForLearner(
     );
 }
 
+/** All mentor↔learner assignments in an organization (for the admin console). */
+export async function getOrgMentorAssignments(db: DB, organizationId: number) {
+  return db
+    .select({
+      mentorUserId: mentorAssignments.mentorUserId,
+      learnerUserId: mentorAssignments.learnerUserId,
+    })
+    .from(mentorAssignments)
+    .where(eq(mentorAssignments.organizationId, organizationId));
+}
+
+/** Remove a mentor↔learner assignment. */
+export async function unassignLearner(
+  db: DB,
+  organizationId: number,
+  mentorUserId: number,
+  learnerUserId: number,
+) {
+  await db
+    .delete(mentorAssignments)
+    .where(
+      and(
+        eq(mentorAssignments.organizationId, organizationId),
+        eq(mentorAssignments.mentorUserId, mentorUserId),
+        eq(mentorAssignments.learnerUserId, learnerUserId),
+      ),
+    );
+}
+
 /** Authorization check: is `mentorUserId` the mentor of `learnerUserId` in this org? */
 export async function isMentorOf(
   db: DB,

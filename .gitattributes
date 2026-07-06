@@ -1,0 +1,5 @@
+# Normalize line endings — keeps LF in the repo, stops the CRLF warnings on Windows.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

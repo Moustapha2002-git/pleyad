@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   LogOut,
   Route as RouteIcon,
+  Shield,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -20,6 +21,7 @@ function useNavItems(): NavItem[] {
   const role = me.data?.activeOrganization?.role;
   const inOrg = me.data?.activeOrganization?.type === "team";
   const isMentor = role === "mentor" || role === "admin" || role === "owner";
+  const isAdmin = role === "admin" || role === "owner";
   const isLearnerInOrg = inOrg && role === "member";
 
   const items: NavItem[] = [
@@ -28,6 +30,7 @@ function useNavItems(): NavItem[] {
   ];
   if (isMentor && inOrg) items.push({ to: "/mentor", label: "My learners", icon: Users });
   if (isLearnerInOrg) items.push({ to: "/mentoring", label: "Mentoring", icon: GraduationCap });
+  if (isAdmin && inOrg) items.push({ to: "/admin", label: "Admin", icon: Shield });
   return items;
 }
 
