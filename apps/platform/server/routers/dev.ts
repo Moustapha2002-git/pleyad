@@ -83,6 +83,14 @@ export const devRouter = router({
       }
     }
 
+    // Assign all org paths to the demo learners so they see "Assigned to you".
+    const orgPaths = await pathsRepo.listPathsForUser(db, ia.id, ctx.user.id);
+    for (const learner of learners) {
+      for (const op of orgPaths) {
+        await pathsRepo.assignPath(db, ia.id, op.id, learner.id, ctx.user.id, null);
+      }
+    }
+
     setActiveOrgCookie(ctx.res, ia.publicId);
 
     return {

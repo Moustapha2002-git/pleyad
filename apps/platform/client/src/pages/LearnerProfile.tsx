@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, CalendarPlus, Video } from "lucide-react";
+import { ArrowLeft, CalendarPlus, ClipboardList, Video, X } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
 import { DimensionGauges } from "../components/DimensionGauges";
@@ -8,10 +8,21 @@ import { MessageThread } from "../components/MessageThread";
 import { callRoomName } from "../lib/room";
 import { Avatar, Button, Card, ProgressBar, Select, Spinner, TextInput } from "../components/ui";
 
+function dueLabel(dueAt: string | Date | null) {
+  if (!dueAt) return null;
+  return new Date(dueAt).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export default function LearnerProfile({ learnerId }: { learnerId: number }) {
   const me = trpc.auth.me.useQuery();
   const profile = trpc.mentor.learnerProfile.useQuery({ learnerId });
+  const orgPaths = trpc.paths.list.useQuery();
+  const assigned = trpc.paths.assignedTo.useQuery({ learnerUserId: learnerId });
   const utils = trpc.useUtils();
+
   const ring = trpc.calls.ring.useMutation();
   const cancel = trpc.calls.cancel.useMutation();
   const [inCall, setInCall] = useState(false);
@@ -27,12 +38,26 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
     },
   });
 
+  // Assigning paths
+  const [assignPathId, setAssignPathId] = useState("");
+  const [assignDue, setAssignDue] = useState("");
+  const refreshAssignments = () => {
+    utils.paths.assignedTo.invalidate({ learnerUserId: learnerId });
+  };
+  const assignPath = trpc.paths.assign.useMutation({
+    onSuccess: () => {
+      setAssignPathId("");
+      setAssignDue("");
+      refreshAssignments();
+    },
+  });
+  const unassignPath = trpc.paths.unassign.useMutation({ onSuccess: refreshAssignments });
+
   const room = me.data
     ? callRoomName(me.data.activeOrganization?.publicId ?? "", me.data.id, learnerId)
     : "";
-
   const startCall = () => {
-    if (room) ring.mutate({ toUserId: learnerId, room }); // ring the learner
+    if (room) ring.mutate({ toUserId: learnerId, room });
     setInCall(true);
   };
   const endCall = () => {
@@ -44,6 +69,10 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
   if (!profile.data) return <p className="text-ink/50">Not found.</p>;
   const p = profile.data;
   const name = p.learner.name ?? p.learner.email ?? "Learner";
+
+  const assignedPaths = assigned.data ?? [];
+  const assignedIds = new Set(assignedPaths.map((a) => a.id));
+  const available = (orgPaths.data ?? []).filter((op) => !assignedIds.has(op.id));
 
   return (
     <div className="space-y-6">
@@ -74,6 +103,13 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
           onClose={endCall}
         />
       )}
+
+      <section>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold">
+          Progress CV
+        </h2>
+        <DimensionGauges data={p.progression} />
+      </section>
 
       {/* Schedule a session */}
       <Card className="p-6">
@@ -123,31 +159,83 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
         </form>
       </Card>
 
-      <section>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold">
-          Progress CV
+      {/* Assigned learning paths */}
+      <Card className="p-6">
+        <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
+          <ClipboardList className="h-4 w-4" /> Assigned learning paths
         </h2>
-        <DimensionGauges data={p.progression} />
-      </section>
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold text-navy-900">Learning paths</h2>
-        {p.paths.length > 0 ? (
-          <div className="space-y-3">
-            {p.paths.map((path) => (
-              <Card key={path.id} className="p-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-navy-900">{path.title}</span>
-                  <span className="text-sm text-ink/50">{path.progress}%</span>
+        {assignedPaths.length > 0 ? (
+          <div className="mb-4 space-y-2">
+            {assignedPaths.map((path) => (
+              <div
+                key={path.id}
+                className="flex items-center gap-3 rounded-xl border border-gray-100 p-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-navy-900">{path.title}</span>
+                    {dueLabel(path.dueAt) && (
+                      <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
+                        Due {dueLabel(path.dueAt)}
+                      </span>
+                    )}
+                  </div>
+                  <ProgressBar value={path.progress} className="mt-2" />
                 </div>
-                <ProgressBar value={path.progress} className="mt-2" />
-              </Card>
+                <span className="text-sm text-ink/50">{path.progress}%</span>
+                <button
+                  onClick={() =>
+                    unassignPath.mutate({ collectionId: path.id, learnerUserId: learnerId })
+                  }
+                  className="rounded-lg border border-gray-200 p-2 text-ink/50 transition hover:bg-gray-50"
+                  aria-label="Unassign"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             ))}
           </div>
         ) : (
-          <p className="text-ink/50">No paths yet.</p>
+          <p className="mb-4 text-sm text-ink/50">No paths assigned yet.</p>
         )}
-      </section>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (assignPathId)
+              assignPath.mutate({
+                collectionId: Number(assignPathId),
+                learnerUserId: learnerId,
+                dueAt: assignDue || null,
+              });
+          }}
+          className="flex flex-col gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:items-end"
+        >
+          <label className="flex-1 text-sm">
+            <span className="mb-1 block font-medium text-ink/80">Assign a path</span>
+            <Select
+              value={assignPathId}
+              onChange={(e) => setAssignPathId(e.target.value)}
+              className="w-full"
+            >
+              <option value="">Choose a path…</option>
+              {available.map((op) => (
+                <option key={op.id} value={op.id}>
+                  {op.title}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-ink/80">Due (optional)</span>
+            <TextInput type="date" value={assignDue} onChange={(e) => setAssignDue(e.target.value)} />
+          </label>
+          <Button type="submit" disabled={!assignPathId || assignPath.isPending}>
+            Assign
+          </Button>
+        </form>
+      </Card>
 
       <MessageThread withUserId={learnerId} />
     </div>

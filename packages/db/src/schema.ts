@@ -420,3 +420,38 @@ export const mentoringSessions = mysqlTable(
 
 export type MentoringSession = typeof mentoringSessions.$inferSelect;
 export type InsertMentoringSession = typeof mentoringSessions.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────
+// ASSIGNMENTS — a learning path targeted to a specific learner, with an
+// optional due date. Completion stays DERIVED from the learner's activity.
+// (V1: assign a path to an individual; team/cohort assignment is a follow-up.)
+// ─────────────────────────────────────────────────────────────────────────
+
+export const pathAssignments = mysqlTable(
+  "path_assignments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    organizationId: int("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    collectionId: int("collection_id")
+      .notNull()
+      .references(() => collections.id),
+    learnerUserId: int("learner_user_id")
+      .notNull()
+      .references(() => users.id),
+    assignedByUserId: int("assigned_by_user_id")
+      .notNull()
+      .references(() => users.id),
+    dueAt: timestamp("due_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    orgIdx: index("idx_path_assignments_org").on(t.organizationId),
+    learnerIdx: index("idx_path_assignments_learner").on(t.learnerUserId),
+    uniquePair: uniqueIndex("uq_path_assignment").on(t.collectionId, t.learnerUserId),
+  }),
+);
+
+export type PathAssignment = typeof pathAssignments.$inferSelect;
+export type InsertPathAssignment = typeof pathAssignments.$inferInsert;

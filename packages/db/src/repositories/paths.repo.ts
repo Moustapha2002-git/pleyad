@@ -6,6 +6,7 @@ import {
   collectionItems,
   collections,
   learningResources,
+  pathAssignments,
   userActivities,
 } from "../schema";
 import type { Dimension, InsertLearningResource } from "../schema";
@@ -240,6 +241,112 @@ export async function getProgressionForUser(db: DB, organizationId: number, user
       ? Math.round(relevant.reduce((sum, p) => sum + p.progress, 0) / relevant.length)
       : 0;
     return { dimension, score, pathCount: relevant.length };
+  });
+}
+
+// ── Assignments ─────────────────────────────────────────────────────────
+
+/** Assign a learning path to a learner (idempotent; updates the due date). */
+export async function assignPath(
+  db: DB,
+  organizationId: number,
+  collectionId: number,
+  learnerUserId: number,
+  assignedByUserId: number,
+  dueAt: Date | null,
+) {
+  const existing = await db
+    .select()
+    .from(pathAssignments)
+    .where(
+      and(
+        eq(pathAssignments.organizationId, organizationId),
+        eq(pathAssignments.collectionId, collectionId),
+        eq(pathAssignments.learnerUserId, learnerUserId),
+      ),
+    );
+  if (existing[0]) {
+    await db.update(pathAssignments).set({ dueAt }).where(eq(pathAssignments.id, existing[0].id));
+    return existing[0].id;
+  }
+  const [res] = await db
+    .insert(pathAssignments)
+    .values({ organizationId, collectionId, learnerUserId, assignedByUserId, dueAt });
+  return res.insertId;
+}
+
+export async function unassignPath(
+  db: DB,
+  organizationId: number,
+  collectionId: number,
+  learnerUserId: number,
+) {
+  await db
+    .delete(pathAssignments)
+    .where(
+      and(
+        eq(pathAssignments.organizationId, organizationId),
+        eq(pathAssignments.collectionId, collectionId),
+        eq(pathAssignments.learnerUserId, learnerUserId),
+      ),
+    );
+  return { ok: true };
+}
+
+/** Paths assigned to a learner, with the learner's progress + due date. */
+export async function getAssignedPaths(db: DB, organizationId: number, learnerUserId: number) {
+  const assigns = await db
+    .select()
+    .from(pathAssignments)
+    .where(
+      and(
+        eq(pathAssignments.organizationId, organizationId),
+        eq(pathAssignments.learnerUserId, learnerUserId),
+      ),
+    );
+  if (assigns.length === 0) return [];
+
+  const collectionIds = assigns.map((a) => a.collectionId);
+  const dueByCollection = new Map(assigns.map((a) => [a.collectionId, a.dueAt]));
+
+  const paths = await db.select().from(collections).where(inArray(collections.id, collectionIds));
+  const dims = await db
+    .select()
+    .from(collectionDimensions)
+    .where(inArray(collectionDimensions.collectionId, collectionIds));
+  const items = await db
+    .select()
+    .from(collectionItems)
+    .where(inArray(collectionItems.collectionId, collectionIds));
+  const resourceIds = items.map((i) => i.resourceId);
+  const acts = resourceIds.length
+    ? await db
+        .select()
+        .from(userActivities)
+        .where(
+          and(
+            eq(userActivities.userId, learnerUserId),
+            inArray(userActivities.resourceId, resourceIds),
+          ),
+        )
+    : [];
+  const done = new Set(acts.filter((a) => a.status === "completed").map((a) => a.resourceId));
+
+  return paths.map((p) => {
+    const pItems = items.filter((i) => i.collectionId === p.id);
+    const total = pItems.length;
+    const completed = pItems.filter((i) => done.has(i.resourceId)).length;
+    return {
+      id: p.id,
+      publicId: p.publicId,
+      title: p.title,
+      description: p.description,
+      dimensions: dims.filter((d) => d.collectionId === p.id).map((d) => d.dimension),
+      itemCount: total,
+      completedCount: completed,
+      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+      dueAt: dueByCollection.get(p.id) ?? null,
+    };
   });
 }
 

@@ -9,18 +9,35 @@ export default function Dashboard() {
   const me = trpc.auth.me.useQuery();
   const progression = trpc.paths.progression.useQuery();
   const paths = trpc.paths.list.useQuery();
+  const assigned = trpc.paths.assigned.useQuery();
   const sessions = trpc.sessions.mine.useQuery();
   const setupDemo = trpc.dev.setupMentorDemo.useMutation({
     onSuccess: () => window.location.assign("/mentor"),
   });
 
   const firstName = me.data?.name?.split(" ")[0] ?? "there";
-  const active = (paths.data ?? []).filter((p) => p.itemCount > 0);
-  const isPersonal = me.data?.activeOrganization?.type !== "team";
+  const isTeam = me.data?.activeOrganization?.type === "team";
+  const isPersonal = !isTeam;
+
+  // In a team workspace, learners follow ASSIGNED paths; in a personal space,
+  // their own paths. Normalize to a common shape (dueAt optional).
+  const own = (paths.data ?? []).filter((p) => p.itemCount > 0);
+  const learnerPaths = (isTeam ? (assigned.data ?? []) : own).map((p) => ({
+    id: p.id,
+    title: p.title,
+    progress: p.progress,
+    dueAt: (p as { dueAt?: string | Date | null }).dueAt ?? null,
+  }));
+
   // Upcoming sessions (keep ones starting within the last 30 min as "now").
   const upcoming = (sessions.data ?? []).filter(
     (s) => new Date(s.scheduledAt).getTime() > Date.now() - 30 * 60000,
   );
+
+  const dueLabel = (dueAt: string | Date | null) =>
+    dueAt
+      ? new Date(dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+      : null;
 
   return (
     <div className="space-y-8">
@@ -45,23 +62,30 @@ export default function Dashboard() {
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-navy-900">Continue learning</h2>
+          <h2 className="text-lg font-semibold text-navy-900">
+            {isTeam ? "Assigned to you" : "Continue learning"}
+          </h2>
           <Link
             to="/paths"
             className="inline-flex items-center gap-1 text-sm font-medium text-navy/70 transition hover:text-navy"
           >
-            Manage paths <ArrowRight className="h-4 w-4" />
+            {isTeam ? "All paths" : "Manage paths"} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        {paths.isLoading ? (
-          <Spinner label="Loading…" />
-        ) : active.length > 0 ? (
+        {learnerPaths.length > 0 ? (
           <div className="space-y-3">
-            {active.map((p) => (
+            {learnerPaths.map((p) => (
               <Link key={p.id} to={`/paths/${p.id}`}>
                 <Card className="p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-navy-900">{p.title}</span>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-navy-900">{p.title}</span>
+                      {dueLabel(p.dueAt) && (
+                        <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
+                          Due {dueLabel(p.dueAt)}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-sm font-medium text-ink/50">{p.progress}%</span>
                   </div>
                   <ProgressBar value={p.progress} className="mt-3" />
@@ -69,6 +93,12 @@ export default function Dashboard() {
               </Link>
             ))}
           </div>
+        ) : isTeam ? (
+          <EmptyState
+            icon={Plus}
+            title="No paths assigned yet"
+            description="Your mentor will assign learning paths for you here."
+          />
         ) : (
           <EmptyState
             icon={Plus}

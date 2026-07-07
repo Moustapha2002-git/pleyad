@@ -1,10 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { pathsRepo } from "@pleyad/db";
+import { db, pathsRepo } from "@pleyad/db";
 import { router, tenantProcedure } from "../trpc";
 
 const DIMENSION = z.enum(["knowledge", "skills", "human_development"]);
 const PLATFORM = z.enum(["youtube", "coursera", "udemy", "edx", "linkedin", "other"]);
+const CAN_ASSIGN = ["mentor", "admin", "owner"];
 
 export const pathsRouter = router({
   list: tenantProcedure.query(({ ctx }) => pathsRepo.listPaths(ctx.tenant)),
@@ -52,4 +53,58 @@ export const pathsRouter = router({
     .mutation(({ ctx, input }) =>
       pathsRepo.setItemStatus(ctx.tenant, input.resourceId, input.done),
     ),
+
+  // ── Assignments ──────────────────────────────────────────────────────
+  /** Paths assigned to the current user (the learner's own view). */
+  assigned: tenantProcedure.query(({ ctx }) =>
+    pathsRepo.getAssignedPaths(db, ctx.tenant.organizationId, ctx.tenant.userId),
+  ),
+
+  /** Paths assigned to a specific learner (mentor/admin view). */
+  assignedTo: tenantProcedure
+    .input(z.object({ learnerUserId: z.number() }))
+    .query(({ ctx, input }) => {
+      if (!CAN_ASSIGN.includes(ctx.tenant.role)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      return pathsRepo.getAssignedPaths(db, ctx.tenant.organizationId, input.learnerUserId);
+    }),
+
+  assign: tenantProcedure
+    .input(
+      z.object({
+        collectionId: z.number(),
+        learnerUserId: z.number(),
+        dueAt: z.string().nullish(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!CAN_ASSIGN.includes(ctx.tenant.role)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only mentors can assign paths" });
+      }
+      const due = input.dueAt ? new Date(input.dueAt) : null;
+      await pathsRepo.assignPath(
+        db,
+        ctx.tenant.organizationId,
+        input.collectionId,
+        input.learnerUserId,
+        ctx.tenant.userId,
+        due,
+      );
+      return { ok: true };
+    }),
+
+  unassign: tenantProcedure
+    .input(z.object({ collectionId: z.number(), learnerUserId: z.number() }))
+    .mutation(({ ctx, input }) => {
+      if (!CAN_ASSIGN.includes(ctx.tenant.role)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      return pathsRepo.unassignPath(
+        db,
+        ctx.tenant.organizationId,
+        input.collectionId,
+        input.learnerUserId,
+      );
+    }),
 });
