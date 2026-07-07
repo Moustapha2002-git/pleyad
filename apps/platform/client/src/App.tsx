@@ -11,6 +11,7 @@ import MentorLearners from "./pages/MentorLearners";
 import LearnerProfile from "./pages/LearnerProfile";
 import Mentoring from "./pages/Mentoring";
 import Admin from "./pages/Admin";
+import Schedule from "./pages/Schedule";
 
 export default function App() {
   const me = trpc.auth.me.useQuery();
@@ -46,6 +47,7 @@ export default function App() {
           {(params) => <LearnerProfile learnerId={Number(params.learnerId)} />}
         </Route>
         <Route path="/mentoring" component={Mentoring} />
+        <Route path="/schedule" component={Schedule} />
         <Route path="/admin" component={Admin} />
         <Route>
           <Redirect to="/" />

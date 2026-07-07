@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
+  CalendarDays,
   GraduationCap,
   LayoutDashboard,
   LogOut,
@@ -28,6 +29,7 @@ function useNavItems(): NavItem[] {
     { to: "/", label: "Dashboard", icon: LayoutDashboard },
     { to: "/paths", label: "Learning paths", icon: RouteIcon },
   ];
+  if (inOrg) items.push({ to: "/schedule", label: "Schedule", icon: CalendarDays });
   if (isMentor && inOrg) items.push({ to: "/mentor", label: "My learners", icon: Users });
   if (isLearnerInOrg) items.push({ to: "/mentoring", label: "Mentoring", icon: GraduationCap });
   if (isAdmin && inOrg) items.push({ to: "/admin", label: "Admin", icon: Shield });

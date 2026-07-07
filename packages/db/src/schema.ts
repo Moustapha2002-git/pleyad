@@ -381,3 +381,42 @@ export const messages = mysqlTable(
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = typeof messages.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────
+// SCHEDULING — mentoring sessions (the calendar's first event type). Both
+// participants join the same deterministic video room at the scheduled time.
+// ─────────────────────────────────────────────────────────────────────────
+
+export const mentoringSessions = mysqlTable(
+  "mentoring_sessions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    organizationId: int("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    mentorUserId: int("mentor_user_id")
+      .notNull()
+      .references(() => users.id),
+    learnerUserId: int("learner_user_id")
+      .notNull()
+      .references(() => users.id),
+    title: varchar("title", { length: 255 }).notNull(),
+    scheduledAt: timestamp("scheduled_at").notNull(),
+    durationMinutes: int("duration_minutes").default(30).notNull(),
+    status: mysqlEnum("status", ["scheduled", "cancelled", "completed"])
+      .default("scheduled")
+      .notNull(),
+    createdByUserId: int("created_by_user_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    orgIdx: index("idx_sessions_org").on(t.organizationId),
+    mentorIdx: index("idx_sessions_mentor").on(t.mentorUserId),
+    learnerIdx: index("idx_sessions_learner").on(t.learnerUserId),
+  }),
+);
+
+export type MentoringSession = typeof mentoringSessions.$inferSelect;
+export type InsertMentoringSession = typeof mentoringSessions.$inferInsert;

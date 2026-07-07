@@ -2,12 +2,14 @@ import { ArrowRight, Plus, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
 import { DimensionGauges } from "../components/DimensionGauges";
+import { SessionList } from "../components/SessionList";
 import { Button, Card, EmptyState, ProgressBar, Spinner } from "../components/ui";
 
 export default function Dashboard() {
   const me = trpc.auth.me.useQuery();
   const progression = trpc.paths.progression.useQuery();
   const paths = trpc.paths.list.useQuery();
+  const sessions = trpc.sessions.mine.useQuery();
   const setupDemo = trpc.dev.setupMentorDemo.useMutation({
     onSuccess: () => window.location.assign("/mentor"),
   });
@@ -15,6 +17,10 @@ export default function Dashboard() {
   const firstName = me.data?.name?.split(" ")[0] ?? "there";
   const active = (paths.data ?? []).filter((p) => p.itemCount > 0);
   const isPersonal = me.data?.activeOrganization?.type !== "team";
+  // Upcoming sessions (keep ones starting within the last 30 min as "now").
+  const upcoming = (sessions.data ?? []).filter(
+    (s) => new Date(s.scheduledAt).getTime() > Date.now() - 30 * 60000,
+  );
 
   return (
     <div className="space-y-8">
@@ -22,6 +28,13 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold tracking-tight text-navy-900">Hi {firstName} 👋</h1>
         <p className="mt-1 text-ink/55">Here's your development at a glance.</p>
       </div>
+
+      {upcoming.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold">Today</h2>
+          <SessionList sessions={upcoming.slice(0, 2)} allowCancel={false} />
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold">

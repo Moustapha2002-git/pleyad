@@ -8,6 +8,7 @@ import { mentorRouter } from "./mentor";
 import { messagesRouter } from "./messages";
 import { orgRouter } from "./org";
 import { pathsRouter } from "./paths";
+import { sessionsRouter } from "./sessions";
 
 export const appRouter = router({
   auth: authRouter,
@@ -17,6 +18,7 @@ export const appRouter = router({
   mentor: mentorRouter,
   messages: messagesRouter,
   calls: callsRouter,
+  sessions: sessionsRouter,
   admin: adminRouter,
   dev: devRouter,
 });
