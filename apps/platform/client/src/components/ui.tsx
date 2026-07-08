@@ -3,6 +3,7 @@ import type {
   InputHTMLAttributes,
   ReactNode,
   SelectHTMLAttributes,
+  TextareaHTMLAttributes,
 } from "react";
 import type { LucideIcon } from "lucide-react";
 
@@ -203,6 +204,21 @@ export function TextInput({
 }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
+      {...props}
+      className={cn(
+        "w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-navy focus:ring-2 focus:ring-navy/15",
+        className,
+      )}
+    />
+  );
+}
+
+export function Textarea({
+  className,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
       {...props}
       className={cn(
         "w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-navy focus:ring-2 focus:ring-navy/15",

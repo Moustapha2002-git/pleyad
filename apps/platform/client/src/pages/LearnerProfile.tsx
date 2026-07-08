@@ -1,12 +1,30 @@
 import { useState } from "react";
-import { ArrowLeft, CalendarPlus, ClipboardList, Video, X } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarPlus,
+  ClipboardCheck,
+  ClipboardList,
+  MessageSquareQuote,
+  Trash2,
+  Video,
+  X,
+} from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
 import { DimensionGauges } from "../components/DimensionGauges";
 import { VideoCall } from "../components/VideoCall";
 import { MessageThread } from "../components/MessageThread";
 import { callRoomName } from "../lib/room";
-import { Avatar, Button, Card, ProgressBar, Select, Spinner, TextInput } from "../components/ui";
+import {
+  Avatar,
+  Button,
+  Card,
+  ProgressBar,
+  Select,
+  Spinner,
+  Textarea,
+  TextInput,
+} from "../components/ui";
 
 function dueLabel(dueAt: string | Date | null) {
   if (!dueAt) return null;
@@ -52,6 +70,31 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
     },
   });
   const unassignPath = trpc.paths.unassign.useMutation({ onSuccess: refreshAssignments });
+
+  // Tasks & feedback
+  const tasks = trpc.coaching.tasksFor.useQuery({ learnerUserId: learnerId });
+  const feedback = trpc.coaching.feedbackFor.useQuery({ learnerUserId: learnerId });
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskInstr, setTaskInstr] = useState("");
+  const [taskDue, setTaskDue] = useState("");
+  const [fbBody, setFbBody] = useState("");
+  const createTask = trpc.coaching.createTask.useMutation({
+    onSuccess: () => {
+      setTaskTitle("");
+      setTaskInstr("");
+      setTaskDue("");
+      utils.coaching.tasksFor.invalidate({ learnerUserId: learnerId });
+    },
+  });
+  const deleteTask = trpc.coaching.deleteTask.useMutation({
+    onSuccess: () => utils.coaching.tasksFor.invalidate({ learnerUserId: learnerId }),
+  });
+  const addFeedback = trpc.coaching.addFeedback.useMutation({
+    onSuccess: () => {
+      setFbBody("");
+      utils.coaching.feedbackFor.invalidate({ learnerUserId: learnerId });
+    },
+  });
 
   const room = me.data
     ? callRoomName(me.data.activeOrganization?.publicId ?? "", me.data.id, learnerId)
@@ -233,6 +276,126 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
           </label>
           <Button type="submit" disabled={!assignPathId || assignPath.isPending}>
             Assign
+          </Button>
+        </form>
+      </Card>
+
+      {/* Tasks & exercises */}
+      <Card className="p-6">
+        <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
+          <ClipboardCheck className="h-4 w-4" /> Tasks & exercises
+        </h2>
+        {tasks.data && tasks.data.length > 0 ? (
+          <div className="mb-4 space-y-2">
+            {tasks.data.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-start gap-3 rounded-xl border border-gray-100 p-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={
+                        t.status === "done"
+                          ? "font-medium text-ink/40 line-through"
+                          : "font-medium text-navy-900"
+                      }
+                    >
+                      {t.title}
+                    </span>
+                    {t.status === "done" ? (
+                      <span className="rounded-full bg-dim-skills/10 px-2 py-0.5 text-xs font-medium text-dim-skills">
+                        Done
+                      </span>
+                    ) : dueLabel(t.dueAt) ? (
+                      <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
+                        Due {dueLabel(t.dueAt)}
+                      </span>
+                    ) : null}
+                  </div>
+                  {t.instructions && <p className="mt-1 text-sm text-ink/60">{t.instructions}</p>}
+                </div>
+                <button
+                  onClick={() => deleteTask.mutate({ taskId: t.id })}
+                  className="rounded-lg border border-gray-200 p-2 text-ink/50 transition hover:bg-gray-50"
+                  aria-label="Delete task"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mb-4 text-sm text-ink/50">No tasks yet.</p>
+        )}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (taskTitle.trim())
+              createTask.mutate({
+                learnerUserId: learnerId,
+                title: taskTitle.trim(),
+                instructions: taskInstr.trim() || undefined,
+                dueAt: taskDue || null,
+              });
+          }}
+          className="space-y-2 border-t border-gray-100 pt-4"
+        >
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <TextInput
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+              placeholder="Task title (e.g. Build a to-do app)"
+              className="sm:flex-1"
+            />
+            <TextInput type="date" value={taskDue} onChange={(e) => setTaskDue(e.target.value)} />
+          </div>
+          <Textarea
+            value={taskInstr}
+            onChange={(e) => setTaskInstr(e.target.value)}
+            placeholder="Instructions (optional)"
+            rows={2}
+          />
+          <Button type="submit" disabled={!taskTitle.trim() || createTask.isPending}>
+            Add task
+          </Button>
+        </form>
+      </Card>
+
+      {/* Official feedback */}
+      <Card className="p-6">
+        <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
+          <MessageSquareQuote className="h-4 w-4" /> Feedback
+        </h2>
+        {feedback.data && feedback.data.length > 0 ? (
+          <div className="mb-4 space-y-2">
+            {feedback.data.map((f) => (
+              <div key={f.id} className="rounded-xl border border-gray-100 p-3">
+                <p className="text-sm text-ink">{f.body}</p>
+                <p className="mt-1 text-xs text-ink/40">
+                  {new Date(f.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mb-4 text-sm text-ink/50">No feedback yet.</p>
+        )}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (fbBody.trim()) addFeedback.mutate({ learnerUserId: learnerId, body: fbBody.trim() });
+          }}
+          className="space-y-2 border-t border-gray-100 pt-4"
+        >
+          <Textarea
+            value={fbBody}
+            onChange={(e) => setFbBody(e.target.value)}
+            placeholder="Write official feedback for this learner…"
+            rows={3}
+          />
+          <Button type="submit" disabled={!fbBody.trim() || addFeedback.isPending}>
+            Give feedback
           </Button>
         </form>
       </Card>

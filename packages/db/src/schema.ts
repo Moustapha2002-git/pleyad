@@ -455,3 +455,61 @@ export const pathAssignments = mysqlTable(
 
 export type PathAssignment = typeof pathAssignments.$inferSelect;
 export type InsertPathAssignment = typeof pathAssignments.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────
+// COACHING — mentor tools: tasks/exercises and official feedback.
+// ─────────────────────────────────────────────────────────────────────────
+
+export const learnerTasks = mysqlTable(
+  "learner_tasks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    organizationId: int("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    mentorUserId: int("mentor_user_id")
+      .notNull()
+      .references(() => users.id),
+    learnerUserId: int("learner_user_id")
+      .notNull()
+      .references(() => users.id),
+    title: varchar("title", { length: 255 }).notNull(),
+    instructions: text("instructions"),
+    dueAt: timestamp("due_at"),
+    status: mysqlEnum("status", ["open", "done"]).default("open").notNull(),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    orgIdx: index("idx_learner_tasks_org").on(t.organizationId),
+    learnerIdx: index("idx_learner_tasks_learner").on(t.learnerUserId),
+  }),
+);
+
+export type LearnerTask = typeof learnerTasks.$inferSelect;
+export type InsertLearnerTask = typeof learnerTasks.$inferInsert;
+
+export const mentorFeedback = mysqlTable(
+  "mentor_feedback",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    organizationId: int("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    mentorUserId: int("mentor_user_id")
+      .notNull()
+      .references(() => users.id),
+    learnerUserId: int("learner_user_id")
+      .notNull()
+      .references(() => users.id),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    orgIdx: index("idx_mentor_feedback_org").on(t.organizationId),
+    learnerIdx: index("idx_mentor_feedback_learner").on(t.learnerUserId),
+  }),
+);
+
+export type MentorFeedback = typeof mentorFeedback.$inferSelect;
+export type InsertMentorFeedback = typeof mentorFeedback.$inferInsert;

@@ -11,3 +11,4 @@ export * as pathsRepo from "./repositories/paths.repo";
 export * as mentorshipRepo from "./repositories/mentorship.repo";
 export * as messagesRepo from "./repositories/messages.repo";
 export * as sessionsRepo from "./repositories/sessions.repo";
+export * as coachingRepo from "./repositories/coaching.repo";

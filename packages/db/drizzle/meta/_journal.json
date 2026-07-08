@@ -36,6 +36,13 @@
       "when": 1783431897868,
       "tag": "0004_handy_hannibal_king",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1783433737154,
+      "tag": "0005_colossal_norman_osborn",
+      "breakpoints": true
     }
   ]
 }
