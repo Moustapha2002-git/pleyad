@@ -1,8 +1,16 @@
 import { useState } from "react";
-import { Check, ClipboardCheck, GraduationCap, MessageSquareQuote, Video } from "lucide-react";
+import {
+  Check,
+  ClipboardCheck,
+  GraduationCap,
+  ListChecks,
+  MessageSquareQuote,
+  Video,
+} from "lucide-react";
 import { trpc } from "../lib/trpc";
 import { VideoCall } from "../components/VideoCall";
 import { MessageThread } from "../components/MessageThread";
+import { QuizTaker } from "../components/QuizTaker";
 import { callRoomName } from "../lib/room";
 import { Avatar, Button, Card, EmptyState, PageHeader, Spinner } from "../components/ui";
 
@@ -17,6 +25,8 @@ export default function Mentoring() {
   const utils = trpc.useUtils();
   const tasks = trpc.coaching.myTasks.useQuery();
   const feedback = trpc.coaching.myFeedback.useQuery();
+  const quizzes = trpc.quizzes.mine.useQuery();
+  const [takingQuiz, setTakingQuiz] = useState<number | null>(null);
   const setTaskDone = trpc.coaching.setTaskDone.useMutation({
     onSuccess: () => utils.coaching.myTasks.invalidate(),
   });
@@ -142,6 +152,48 @@ export default function Mentoring() {
               </div>
             </Card>
           )}
+
+          {/* Quizzes */}
+          <Card className="p-6">
+            <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
+              <ListChecks className="h-4 w-4" /> Quizzes
+            </h2>
+            {takingQuiz !== null ? (
+              <QuizTaker
+                quizId={takingQuiz}
+                onClose={() => {
+                  setTakingQuiz(null);
+                  utils.quizzes.mine.invalidate();
+                }}
+              />
+            ) : quizzes.data && quizzes.data.length > 0 ? (
+              <div className="space-y-2">
+                {quizzes.data.map((q) => (
+                  <div
+                    key={q.id}
+                    className="flex items-center gap-3 rounded-xl border border-gray-100 p-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium text-navy-900">{q.title}</span>
+                      <span className="ml-2 text-sm text-ink/50">
+                        {q.questionCount} question{q.questionCount === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    {q.taken && (
+                      <span className="rounded-full bg-dim-skills/10 px-2 py-0.5 text-xs font-medium text-dim-skills">
+                        Score {q.score}%
+                      </span>
+                    )}
+                    <Button variant="secondary" onClick={() => setTakingQuiz(q.id)}>
+                      {q.taken ? "Retake" : "Take"}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-ink/50">No quizzes yet.</p>
+            )}
+          </Card>
 
           <MessageThread
             withUserId={mentor.id}

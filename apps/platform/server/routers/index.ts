@@ -9,6 +9,7 @@ import { mentorRouter } from "./mentor";
 import { messagesRouter } from "./messages";
 import { orgRouter } from "./org";
 import { pathsRouter } from "./paths";
+import { quizzesRouter } from "./quizzes";
 import { sessionsRouter } from "./sessions";
 
 export const appRouter = router({
@@ -21,6 +22,7 @@ export const appRouter = router({
   calls: callsRouter,
   sessions: sessionsRouter,
   coaching: coachingRouter,
+  quizzes: quizzesRouter,
   admin: adminRouter,
   dev: devRouter,
 });

@@ -513,3 +513,77 @@ export const mentorFeedback = mysqlTable(
 
 export type MentorFeedback = typeof mentorFeedback.$inferSelect;
 export type InsertMentorFeedback = typeof mentorFeedback.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────
+// QUIZZES — a mentor builds a multiple-choice quiz for a learner; the learner
+// takes it and is graded server-side (correct answers never leave the server).
+// ─────────────────────────────────────────────────────────────────────────
+
+export const quizzes = mysqlTable(
+  "quizzes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    organizationId: int("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    mentorUserId: int("mentor_user_id")
+      .notNull()
+      .references(() => users.id),
+    learnerUserId: int("learner_user_id")
+      .notNull()
+      .references(() => users.id),
+    title: varchar("title", { length: 255 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    orgIdx: index("idx_quizzes_org").on(t.organizationId),
+    learnerIdx: index("idx_quizzes_learner").on(t.learnerUserId),
+  }),
+);
+
+export type Quiz = typeof quizzes.$inferSelect;
+export type InsertQuiz = typeof quizzes.$inferInsert;
+
+export const quizQuestions = mysqlTable(
+  "quiz_questions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    quizId: int("quiz_id")
+      .notNull()
+      .references(() => quizzes.id),
+    prompt: varchar("prompt", { length: 512 }).notNull(),
+    options: text("options").notNull(), // JSON array of option strings
+    correctIndex: int("correct_index").notNull(),
+    position: int("position").default(0).notNull(),
+  },
+  (t) => ({
+    quizIdx: index("idx_quiz_questions_quiz").on(t.quizId),
+  }),
+);
+
+export type QuizQuestion = typeof quizQuestions.$inferSelect;
+export type InsertQuizQuestion = typeof quizQuestions.$inferInsert;
+
+export const quizAttempts = mysqlTable(
+  "quiz_attempts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    quizId: int("quiz_id")
+      .notNull()
+      .references(() => quizzes.id),
+    learnerUserId: int("learner_user_id")
+      .notNull()
+      .references(() => users.id),
+    answers: text("answers").notNull(), // JSON array of chosen indices
+    correctCount: int("correct_count").notNull(),
+    totalCount: int("total_count").notNull(),
+    score: int("score").notNull(), // 0–100
+    submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    quizLearnerIdx: index("idx_quiz_attempts_quiz_learner").on(t.quizId, t.learnerUserId),
+  }),
+);
+
+export type QuizAttempt = typeof quizAttempts.$inferSelect;
+export type InsertQuizAttempt = typeof quizAttempts.$inferInsert;

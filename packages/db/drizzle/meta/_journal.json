@@ -43,6 +43,13 @@
       "when": 1783433737154,
       "tag": "0005_colossal_norman_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1783496711504,
+      "tag": "0006_many_nomad",
+      "breakpoints": true
     }
   ]
 }

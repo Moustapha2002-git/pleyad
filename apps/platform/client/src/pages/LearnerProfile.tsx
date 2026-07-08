@@ -4,6 +4,7 @@ import {
   CalendarPlus,
   ClipboardCheck,
   ClipboardList,
+  ListChecks,
   MessageSquareQuote,
   Trash2,
   Video,
@@ -14,6 +15,7 @@ import { trpc } from "../lib/trpc";
 import { DimensionGauges } from "../components/DimensionGauges";
 import { VideoCall } from "../components/VideoCall";
 import { MessageThread } from "../components/MessageThread";
+import { QuizBuilder } from "../components/QuizBuilder";
 import { callRoomName } from "../lib/room";
 import {
   Avatar,
@@ -94,6 +96,13 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
       setFbBody("");
       utils.coaching.feedbackFor.invalidate({ learnerUserId: learnerId });
     },
+  });
+
+  // Quizzes
+  const quizzes = trpc.quizzes.forLearner.useQuery({ learnerUserId: learnerId });
+  const [showQuiz, setShowQuiz] = useState(false);
+  const deleteQuiz = trpc.quizzes.delete.useMutation({
+    onSuccess: () => utils.quizzes.forLearner.invalidate({ learnerUserId: learnerId }),
   });
 
   const room = me.data
@@ -398,6 +407,64 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
             Give feedback
           </Button>
         </form>
+      </Card>
+
+      {/* Quizzes */}
+      <Card className="p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-navy-900">
+            <ListChecks className="h-4 w-4" /> Quizzes
+          </h2>
+          <Button variant="secondary" onClick={() => setShowQuiz((s) => !s)}>
+            {showQuiz ? "Close" : "New quiz"}
+          </Button>
+        </div>
+        {showQuiz && (
+          <div className="mb-4">
+            <QuizBuilder
+              learnerId={learnerId}
+              onCreated={() => {
+                setShowQuiz(false);
+                utils.quizzes.forLearner.invalidate({ learnerUserId: learnerId });
+              }}
+            />
+          </div>
+        )}
+        {quizzes.data && quizzes.data.length > 0 ? (
+          <div className="space-y-2">
+            {quizzes.data.map((q) => (
+              <div
+                key={q.id}
+                className="flex items-center gap-3 rounded-xl border border-gray-100 p-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium text-navy-900">{q.title}</span>
+                  <span className="ml-2 text-sm text-ink/50">
+                    {q.questionCount} question{q.questionCount === 1 ? "" : "s"}
+                  </span>
+                </div>
+                {q.taken ? (
+                  <span className="rounded-full bg-dim-skills/10 px-2 py-0.5 text-xs font-medium text-dim-skills">
+                    Score {q.score}%
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-ink/50">
+                    Not taken
+                  </span>
+                )}
+                <button
+                  onClick={() => deleteQuiz.mutate({ quizId: q.id })}
+                  className="rounded-lg border border-gray-200 p-2 text-ink/50 transition hover:bg-gray-50"
+                  aria-label="Delete quiz"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          !showQuiz && <p className="text-sm text-ink/50">No quizzes yet.</p>
+        )}
       </Card>
 
       <MessageThread withUserId={learnerId} />
