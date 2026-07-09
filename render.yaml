@@ -8,12 +8,15 @@ services:
     plan: free # spins down when idle (~30s cold start); upgrade to "starter" for always-on
     region: frankfurt # close to the TiDB Cloud region (eu-central-1)
     branch: main
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm -C apps/platform build
-    startCommand: pnpm -C apps/platform start
+    # `corepack pnpm ...` runs pnpm (version from package.json's packageManager)
+    # via corepack's writable cache — avoids `corepack enable` writing to a
+    # read-only /usr/bin on Render.
+    buildCommand: corepack pnpm install --frozen-lockfile && corepack pnpm -C apps/platform build
+    startCommand: corepack pnpm -C apps/platform start
     healthCheckPath: /health
     envVars:
-      - key: NODE_VERSION
-        value: "20.19.0" # Vite 7 needs Node >= 20.19
+      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
+        value: "0" # let corepack fetch pnpm non-interactively
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
