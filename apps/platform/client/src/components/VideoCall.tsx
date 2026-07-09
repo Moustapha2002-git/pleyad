@@ -1,6 +1,9 @@
+import { trpc } from "../lib/trpc";
+import { Spinner } from "./ui";
+
 /**
- * Embedded 1:1 video via Jitsi Meet (public meet.jit.si — no account/keys needed).
- * A full-screen overlay hosting the call iframe.
+ * Embedded 1:1 video. Uses a private, token-secured Daily.co room when the server
+ * has Daily configured; otherwise falls back to the public Jitsi room.
  */
 export function VideoCall({
   room,
@@ -11,18 +14,19 @@ export function VideoCall({
   displayName: string;
   onClose: () => void;
 }) {
-  const params = [
+  const daily = trpc.calls.dailyUrl.useQuery({ room }, { refetchOnWindowFocus: false });
+
+  const jitsiParams = [
     "config.prejoinPageEnabled=false",
-    "config.prejoinConfig.enabled=false",
     "config.disableDeepLinking=true",
-    "config.enableWelcomePage=false",
     "config.p2p.enabled=true",
-    "config.requireDisplayName=false",
-    "config.enableLobbyChat=false",
-    "config.disableModeratorIndicator=true",
     `userInfo.displayName=%22${encodeURIComponent(displayName)}%22`,
   ].join("&");
-  const src = `https://meet.jit.si/${encodeURIComponent(room)}#${params}`;
+  const jitsiSrc = `https://meet.jit.si/${encodeURIComponent(room)}#${jitsiParams}`;
+
+  // Daily URL when configured; Jitsi when the query resolved with url:null.
+  const src =
+    daily.data?.url ?? (daily.data && daily.data.url === null ? jitsiSrc : null);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-3">
@@ -35,12 +39,24 @@ export function VideoCall({
           Leave call
         </button>
       </div>
-      <iframe
-        title="Pleyad video call"
-        src={src}
-        allow="camera; microphone; fullscreen; display-capture; autoplay"
-        className="h-full w-full rounded-xl border-0 bg-black"
-      />
+      {src ? (
+        <iframe
+          title="Pleyad video call"
+          src={src}
+          allow="camera; microphone; fullscreen; display-capture; autoplay"
+          className="h-full w-full rounded-xl border-0 bg-black"
+        />
+      ) : (
+        <div className="flex flex-1 items-center justify-center rounded-xl bg-black text-white/70">
+          {daily.error ? (
+            <span className="px-6 text-center text-sm">
+              Couldn't start the call: {daily.error.message}
+            </span>
+          ) : (
+            <Spinner label="Connecting…" />
+          )}
+        </div>
+      )}
     </div>
   );
 }

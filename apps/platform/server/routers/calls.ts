@@ -1,8 +1,26 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, tenantProcedure } from "../trpc";
 import * as calls from "../calls";
+import { getJoinUrl } from "../daily";
 
 export const callsRouter = router({
+  /**
+   * A private, token-secured join URL for a room. The room name embeds the
+   * workspace's unguessable public id, so only the two intended participants
+   * ever know it; the token then locks entry to this authenticated user.
+   */
+  dailyUrl: tenantProcedure
+    .input(z.object({ room: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      if (!input.room.startsWith("pleyad-")) {
+        throw new TRPCError({ code: "BAD_REQUEST" });
+      }
+      const userName = ctx.user.name ?? ctx.user.email ?? "Guest";
+      const url = await getJoinUrl(input.room, userName);
+      return { url }; // null when Daily isn't configured -> client falls back to Jitsi
+    }),
+
   /** Caller signals an incoming call to the callee (room is computed client-side). */
   ring: tenantProcedure
     .input(z.object({ toUserId: z.number(), room: z.string().min(1) }))
