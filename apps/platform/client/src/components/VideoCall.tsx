@@ -11,8 +11,18 @@ export function VideoCall({
   displayName: string;
   onClose: () => void;
 }) {
-  const hash = `#config.prejoinPageEnabled=false&userInfo.displayName=%22${encodeURIComponent(displayName)}%22`;
-  const src = `https://meet.jit.si/${encodeURIComponent(room)}${hash}`;
+  const params = [
+    "config.prejoinPageEnabled=false",
+    "config.prejoinConfig.enabled=false",
+    "config.disableDeepLinking=true",
+    "config.enableWelcomePage=false",
+    "config.p2p.enabled=true",
+    "config.requireDisplayName=false",
+    "config.enableLobbyChat=false",
+    "config.disableModeratorIndicator=true",
+    `userInfo.displayName=%22${encodeURIComponent(displayName)}%22`,
+  ].join("&");
+  const src = `https://meet.jit.si/${encodeURIComponent(room)}#${params}`;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-3">

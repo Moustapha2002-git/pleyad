@@ -355,9 +355,14 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
               placeholder="Task title (e.g. Build a to-do app)"
-              className="sm:flex-1"
+              className="min-w-0 sm:flex-1"
             />
-            <TextInput type="date" value={taskDue} onChange={(e) => setTaskDue(e.target.value)} />
+            <TextInput
+              type="date"
+              value={taskDue}
+              onChange={(e) => setTaskDue(e.target.value)}
+              className="sm:w-44 sm:shrink-0"
+            />
           </div>
           <Textarea
             value={taskInstr}
