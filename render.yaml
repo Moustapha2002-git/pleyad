@@ -1,0 +1,20 @@
+# Render Blueprint — deploys Pleyad as one web service (API + built client).
+# The database is external (TiDB Cloud); DATABASE_URL + SESSION_SECRET are set as
+# secrets in the Render dashboard, not here. Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: pleyad
+    runtime: node
+    plan: free # spins down when idle (~30s cold start); upgrade to "starter" for always-on
+    region: frankfurt # close to the TiDB Cloud region (eu-central-1)
+    branch: main
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm -C apps/platform build
+    startCommand: pnpm -C apps/platform start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # set in the Render dashboard (secret)
+      - key: SESSION_SECRET
+        sync: false # set in the Render dashboard (secret)
