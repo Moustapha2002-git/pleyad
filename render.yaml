@@ -12,6 +12,8 @@ services:
     startCommand: pnpm -C apps/platform start
     healthCheckPath: /health
     envVars:
+      - key: NODE_VERSION
+        value: "20.19.0" # Vite 7 needs Node >= 20.19
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
