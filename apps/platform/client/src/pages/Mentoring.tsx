@@ -51,6 +51,7 @@ export default function Mentoring() {
   const [tab, setTab] = useState<Tab>("overview");
   const [takingQuiz, setTakingQuiz] = useState<number | null>(null);
   const [inCall, setInCall] = useState(false);
+  const [selectedMentorId, setSelectedMentorId] = useState<number | null>(null);
 
   const setTaskDone = trpc.coaching.setTaskDone.useMutation({
     onSuccess: () => utils.coaching.myTasks.invalidate(),
@@ -62,7 +63,9 @@ export default function Mentoring() {
   const orgPublicId = me.data?.activeOrganization?.publicId ?? "";
   const myId = me.data?.id ?? 0;
   const myName = me.data?.name ?? me.data?.email ?? "Learner";
-  const mentor = mentors.data?.[0];
+  // A learner may have more than one mentor; let them switch which one is active.
+  const allMentors = mentors.data ?? [];
+  const mentor = allMentors.find((m) => m.id === selectedMentorId) ?? allMentors[0];
 
   const room = mentor ? callRoomName(orgPublicId, myId, mentor.id) : "";
   const startCall = () => {
@@ -113,7 +116,38 @@ export default function Mentoring() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mentoring" subtitle="Your mentor in this workspace." />
+      <PageHeader
+        title="Mentoring"
+        subtitle={
+          allMentors.length > 1
+            ? `You have ${allMentors.length} mentors in this workspace.`
+            : "Your mentor in this workspace."
+        }
+      />
+
+      {/* Mentor switcher — only when the learner has more than one mentor */}
+      {allMentors.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {allMentors.map((m) => {
+            const active = m.id === mentor.id;
+            return (
+              <button
+                key={m.id}
+                onClick={() => setSelectedMentorId(m.id)}
+                className={cn(
+                  "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition",
+                  active
+                    ? "border-navy-900 bg-navy-900 text-white"
+                    : "border-gray-200 text-ink/70 hover:border-navy/40",
+                )}
+              >
+                <Avatar name={m.name ?? m.email ?? "?"} className="h-6 w-6 text-[10px]" />
+                {m.name ?? m.email}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Mentor header */}
       <Card className="flex flex-wrap items-center justify-between gap-4 p-5">

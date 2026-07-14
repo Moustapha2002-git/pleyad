@@ -18,7 +18,7 @@ import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { IncomingCallBanner } from "./IncomingCallBanner";
 import { NotificationBell } from "./NotificationBell";
 
-type NavItem = { to: string; label: string; icon: LucideIcon };
+type NavItem = { to: string; label: string; short: string; icon: LucideIcon };
 
 function useNavItems(): NavItem[] {
   const me = trpc.auth.me.useQuery();
@@ -29,14 +29,17 @@ function useNavItems(): NavItem[] {
   const isLearnerInOrg = inOrg && role === "member";
 
   const items: NavItem[] = [
-    { to: "/", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/paths", label: "My Learning", icon: RouteIcon },
+    { to: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard },
+    { to: "/paths", label: "My Learning", short: "Learn", icon: RouteIcon },
   ];
-  if (inOrg) items.push({ to: "/schedule", label: "Schedule", icon: CalendarDays });
-  if (isMentor && inOrg) items.push({ to: "/mentor", label: "My learners", icon: Users });
-  if (isLearnerInOrg) items.push({ to: "/mentoring", label: "Mentoring", icon: GraduationCap });
-  if (isAdmin && inOrg) items.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });
-  if (isAdmin && inOrg) items.push({ to: "/admin", label: "Admin", icon: Shield });
+  if (inOrg) items.push({ to: "/schedule", label: "Schedule", short: "Agenda", icon: CalendarDays });
+  if (isMentor && inOrg)
+    items.push({ to: "/mentor", label: "My learners", short: "Learners", icon: Users });
+  if (isLearnerInOrg)
+    items.push({ to: "/mentoring", label: "Mentoring", short: "Mentor", icon: GraduationCap });
+  if (isAdmin && inOrg)
+    items.push({ to: "/analytics", label: "Analytics", short: "Stats", icon: BarChart3 });
+  if (isAdmin && inOrg) items.push({ to: "/admin", label: "Admin", short: "Admin", icon: Shield });
   return items;
 }
 
@@ -71,7 +74,7 @@ function TabLink({ item }: { item: NavItem }) {
       )}
     >
       <Icon className="h-5 w-5" />
-      {item.label.split(" ")[0]}
+      {item.short}
     </Link>
   );
 }

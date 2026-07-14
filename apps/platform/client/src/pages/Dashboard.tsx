@@ -23,14 +23,12 @@ const isOverdue = (d: string | Date | null) => !!d && new Date(d).getTime() < Da
 function Stat({ icon: Icon, value, label, to }: { icon: LucideIcon; value: number; label: string; to: string }) {
   return (
     <Link to={to}>
-      <Card className="flex items-center gap-3 p-4 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy/10 text-navy">
-          <Icon className="h-5 w-5" />
+      <Card className="p-3 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] sm:p-4">
+        <div className="flex items-center justify-between">
+          <Icon className="h-5 w-5 text-navy/60" />
+          <span className="text-2xl font-bold leading-none text-navy-900">{value}</span>
         </div>
-        <div>
-          <div className="text-xl font-bold text-navy-900">{value}</div>
-          <div className="text-xs text-ink/55">{label}</div>
-        </div>
+        <div className="mt-2 text-[11px] leading-tight text-ink/55 sm:text-xs">{label}</div>
       </Card>
     </Link>
   );
