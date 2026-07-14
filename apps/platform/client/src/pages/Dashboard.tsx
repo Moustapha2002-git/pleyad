@@ -277,7 +277,7 @@ export default function Dashboard() {
         )}
       </section>
 
-      {isPersonal && (
+      {isPersonal && !import.meta.env.PROD && (
         <Card className="flex flex-wrap items-center justify-between gap-4 border-navy/15 bg-navy/[0.03] p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy/10 text-navy">

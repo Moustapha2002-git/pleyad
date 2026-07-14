@@ -4,7 +4,6 @@ import { AppShell } from "./components/AppShell";
 import { Spinner } from "./components/ui";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Welcome from "./pages/Welcome";
 import Dashboard from "./pages/Dashboard";
 import Paths from "./pages/Paths";
 import PathDetail from "./pages/PathDetail";
@@ -33,9 +32,8 @@ export default function App() {
       <Switch>
         <Route path="/register" component={Register} />
         <Route path="/login" component={Login} />
-        <Route path="/" component={Welcome} />
         <Route>
-          <Redirect to="/" />
+          <Redirect to="/login" />
         </Route>
       </Switch>
     );
