@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { db, pathsRepo } from "@pleyad/db";
+import { db, notificationsRepo, pathsRepo } from "@pleyad/db";
 import { router, tenantProcedure } from "../trpc";
 
 const DIMENSION = z.enum(["knowledge", "skills", "human_development"]);
@@ -91,6 +91,15 @@ export const pathsRouter = router({
         ctx.tenant.userId,
         due,
       );
+      const path = await pathsRepo.getPath(ctx.tenant, input.collectionId);
+      await notificationsRepo.notify(db, {
+        organizationId: ctx.tenant.organizationId,
+        userId: input.learnerUserId,
+        type: "path_assigned",
+        title: "New learning path assigned",
+        body: path?.title ?? null,
+        linkTo: `/paths/${input.collectionId}`,
+      });
       return { ok: true };
     }),
 

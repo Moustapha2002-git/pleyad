@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { coachingRepo, db } from "@pleyad/db";
+import { coachingRepo, db, notificationsRepo } from "@pleyad/db";
 import { router, tenantProcedure } from "../trpc";
 
 const CAN_COACH = ["mentor", "admin", "owner"];
@@ -41,6 +41,14 @@ export const coachingRouter = router({
         title: input.title,
         instructions: input.instructions ?? null,
         dueAt: input.dueAt ? new Date(input.dueAt) : null,
+      });
+      await notificationsRepo.notify(db, {
+        organizationId: ctx.tenant.organizationId,
+        userId: input.learnerUserId,
+        type: "task",
+        title: "New task assigned",
+        body: input.title,
+        linkTo: "/mentoring",
       });
       return { id };
     }),
@@ -86,6 +94,14 @@ export const coachingRouter = router({
         mentorUserId: ctx.tenant.userId,
         learnerUserId: input.learnerUserId,
         body: input.body,
+      });
+      await notificationsRepo.notify(db, {
+        organizationId: ctx.tenant.organizationId,
+        userId: input.learnerUserId,
+        type: "feedback",
+        title: "New feedback from your mentor",
+        body: input.body.slice(0, 140),
+        linkTo: "/mentoring",
       });
       return { id };
     }),

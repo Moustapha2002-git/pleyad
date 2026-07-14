@@ -1,5 +1,6 @@
 import { Brain, HeartHandshake, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { nextTierAt, tierFor } from "../lib/milestones";
 import { Card, ProgressBar } from "./ui";
 
 const META = {
@@ -40,16 +41,25 @@ export function DimensionGauges({
       {data.map((d) => {
         const m = metaFor(d.dimension);
         const Icon = m.icon;
+        const tier = tierFor(d.score);
+        const next = nextTierAt(d.score);
         return (
           <Card key={d.dimension} className="p-5">
-            <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${m.tile}`}>
-                <Icon className="h-5 w-5" />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${m.tile}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-semibold text-navy-900">{m.label}</div>
+                  <div className="text-[11px] uppercase tracking-wide text-ink/40">{m.sub}</div>
+                </div>
               </div>
-              <div>
-                <div className="font-semibold text-navy-900">{m.label}</div>
-                <div className="text-[11px] uppercase tracking-wide text-ink/40">{m.sub}</div>
-              </div>
+              {tier && (
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${tier.pill}`}>
+                  {tier.label}
+                </span>
+              )}
             </div>
             <div className="mt-4 flex items-end justify-between">
               <span className="text-3xl font-bold text-navy-900">
@@ -61,6 +71,11 @@ export function DimensionGauges({
               </span>
             </div>
             <ProgressBar value={d.score} className="mt-3" barClassName={m.bar} />
+            {next != null && (
+              <p className="mt-2 text-[11px] text-ink/40">
+                {next - d.score}% to {next === 100 ? "Master" : "next tier"}
+              </p>
+            )}
           </Card>
         );
       })}

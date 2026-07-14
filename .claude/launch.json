@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pleyad-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "apps/platform", "dev"],
+      "port": 5173
+    }
+  ]
+}

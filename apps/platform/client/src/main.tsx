@@ -5,6 +5,7 @@ import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { trpc } from "./lib/trpc";
 import App from "./App";
+import { ToastProvider } from "./components/Toast";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -26,7 +27,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </QueryClientProvider>
     </trpc.Provider>
   </React.StrictMode>,

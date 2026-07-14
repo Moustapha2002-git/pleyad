@@ -71,4 +71,32 @@ export const authRouter = router({
     clearSessionCookie(ctx.res);
     return { success: true };
   }),
+
+  /** Update the signed-in user's display name. */
+  updateProfile: protectedProcedure
+    .input(z.object({ name: z.string().min(2, "Name must be at least 2 characters") }))
+    .mutation(async ({ ctx, input }) => {
+      await usersRepo.updateProfile(db, ctx.user.id, { name: input.name.trim() });
+      return { success: true };
+    }),
+
+  /** Change the signed-in user's password (verifies the current one first). */
+  changePassword: protectedProcedure
+    .input(
+      z.object({
+        currentPassword: z.string().min(1),
+        newPassword: z.string().min(8, "Password must be at least 8 characters"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await usersRepo.getUserById(db, ctx.user.id);
+      if (
+        !user?.passwordHash ||
+        !(await verifyPassword(input.currentPassword, user.passwordHash))
+      ) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Current password is incorrect" });
+      }
+      await usersRepo.setPassword(db, ctx.user.id, await hashPassword(input.newPassword));
+      return { success: true };
+    }),
 });

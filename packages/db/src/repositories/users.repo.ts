@@ -34,3 +34,16 @@ export async function createUser(
 export async function setLastSignedIn(db: DB, id: number) {
   await db.update(users).set({ lastSignedInAt: new Date() }).where(eq(users.id, id));
 }
+
+/** Update the user's editable profile fields (name, avatar). */
+export async function updateProfile(
+  db: DB,
+  id: number,
+  input: { name?: string; avatarUrl?: string | null },
+) {
+  await db.update(users).set(input).where(eq(users.id, id));
+}
+
+export async function setPassword(db: DB, id: number, passwordHash: string) {
+  await db.update(users).set({ passwordHash }).where(eq(users.id, id));
+}

@@ -123,6 +123,31 @@ export function Avatar({ name, className }: { name: string; className?: string }
   );
 }
 
+// ── Skeleton ──────────────────────────────────────────────────────────────
+export function Skeleton({ className }: { className?: string }) {
+  return <div className={cn("animate-pulse rounded-md bg-gray-200/70", className)} />;
+}
+
+/** A stack of card-shaped skeletons for list loading states. */
+export function ListSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-2xl border border-gray-200/70 bg-white p-5 shadow-[var(--shadow-card)]"
+        >
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-12" />
+          </div>
+          <Skeleton className="mt-4 h-2 w-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Spinner ───────────────────────────────────────────────────────────────
 export function Spinner({ label }: { label?: string }) {
   return (

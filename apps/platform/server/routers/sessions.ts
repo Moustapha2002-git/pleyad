@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { db, sessionsRepo } from "@pleyad/db";
+import { db, notificationsRepo, sessionsRepo } from "@pleyad/db";
 import { router, tenantProcedure } from "../trpc";
 
 const CAN_SCHEDULE = ["mentor", "admin", "owner"];
@@ -37,6 +37,14 @@ export const sessionsRouter = router({
         scheduledAt: when,
         durationMinutes: input.durationMinutes,
         createdByUserId: ctx.tenant.userId,
+      });
+      await notificationsRepo.notify(db, {
+        organizationId: ctx.tenant.organizationId,
+        userId: input.learnerUserId,
+        type: "session",
+        title: "Mentoring session scheduled",
+        body: `${input.title} · ${when.toLocaleString()}`,
+        linkTo: "/schedule",
       });
       return { id };
     }),

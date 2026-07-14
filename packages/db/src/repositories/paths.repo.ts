@@ -91,6 +91,55 @@ export async function listPaths(ctx: TenantContext) {
   return listPathsForUser(ctx.db, ctx.organizationId, ctx.userId);
 }
 
+/**
+ * A learner's own self-curated playlists (kind=playlist, owned by them) with their
+ * progress. Same derivation as paths — reuses collection items + user activities.
+ */
+export async function listPlaylistsForOwner(db: DB, organizationId: number, userId: number) {
+  const rows = await db
+    .select()
+    .from(collections)
+    .where(
+      and(
+        eq(collections.organizationId, organizationId),
+        eq(collections.kind, "playlist"),
+        eq(collections.ownerUserId, userId),
+      ),
+    );
+  if (rows.length === 0) return [];
+
+  const ids = rows.map((p) => p.id);
+  const items = await db
+    .select()
+    .from(collectionItems)
+    .where(inArray(collectionItems.collectionId, ids));
+  const resourceIds = items.map((i) => i.resourceId);
+  const acts = resourceIds.length
+    ? await db
+        .select()
+        .from(userActivities)
+        .where(
+          and(eq(userActivities.userId, userId), inArray(userActivities.resourceId, resourceIds)),
+        )
+    : [];
+  const done = new Set(acts.filter((a) => a.status === "completed").map((a) => a.resourceId));
+
+  return rows.map((p) => {
+    const pItems = items.filter((i) => i.collectionId === p.id);
+    const total = pItems.length;
+    const completed = pItems.filter((i) => done.has(i.resourceId)).length;
+    return {
+      id: p.id,
+      publicId: p.publicId,
+      title: p.title,
+      description: p.description,
+      itemCount: total,
+      completedCount: completed,
+      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+    };
+  });
+}
+
 export async function getPath(ctx: TenantContext, id: number) {
   const rows = await ctx.db
     .select()

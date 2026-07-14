@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
+  BarChart3,
   CalendarDays,
   GraduationCap,
   LayoutDashboard,
   LogOut,
   Route as RouteIcon,
+  Settings as SettingsIcon,
   Shield,
   Users,
 } from "lucide-react";
@@ -14,6 +16,7 @@ import { trpc } from "../lib/trpc";
 import { Avatar, cn } from "./ui";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { IncomingCallBanner } from "./IncomingCallBanner";
+import { NotificationBell } from "./NotificationBell";
 
 type NavItem = { to: string; label: string; icon: LucideIcon };
 
@@ -27,11 +30,12 @@ function useNavItems(): NavItem[] {
 
   const items: NavItem[] = [
     { to: "/", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/paths", label: "Learning paths", icon: RouteIcon },
+    { to: "/paths", label: "My Learning", icon: RouteIcon },
   ];
   if (inOrg) items.push({ to: "/schedule", label: "Schedule", icon: CalendarDays });
   if (isMentor && inOrg) items.push({ to: "/mentor", label: "My learners", icon: Users });
   if (isLearnerInOrg) items.push({ to: "/mentoring", label: "Mentoring", icon: GraduationCap });
+  if (isAdmin && inOrg) items.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });
   if (isAdmin && inOrg) items.push({ to: "/admin", label: "Admin", icon: Shield });
   return items;
 }
@@ -110,6 +114,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               <LogOut className="h-3 w-3" /> Sign out
             </button>
           </div>
+          <Link
+            to="/settings"
+            className="rounded-lg p-1.5 text-white/45 transition hover:bg-white/10 hover:text-white"
+            aria-label="Settings"
+          >
+            <SettingsIcon className="h-4 w-4" />
+          </Link>
         </div>
       </aside>
 
@@ -122,7 +133,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <WorkspaceSwitcher />
           </div>
-          <span className="hidden text-sm text-ink/60 sm:inline">{name}</span>
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <span className="hidden text-sm text-ink/60 sm:inline">{name}</span>
+          </div>
         </header>
 
         <main className="mx-auto max-w-5xl px-5 py-8 pb-24 md:pb-10">{children}</main>

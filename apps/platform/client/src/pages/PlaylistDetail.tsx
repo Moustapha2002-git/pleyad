@@ -3,15 +3,14 @@ import { ArrowLeft, ArrowRight, Check, CheckCircle2, ExternalLink, Plus } from "
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
 import { Celebration } from "../components/Celebration";
-import { DimensionChip } from "../components/DimensionGauges";
 import { useToast } from "../components/Toast";
 import { Button, Card, ProgressBar, Select, Spinner, TextInput, cn } from "../components/ui";
 
 const PLATFORMS = ["youtube", "coursera", "udemy", "edx", "linkedin", "other"] as const;
 type Platform = (typeof PLATFORMS)[number];
 
-export default function PathDetail({ id }: { id: number }) {
-  const path = trpc.paths.get.useQuery({ id });
+export default function PlaylistDetail({ id }: { id: number }) {
+  const playlist = trpc.playlists.get.useQuery({ id });
   const utils = trpc.useUtils();
   const toast = useToast();
   const [title, setTitle] = useState("");
@@ -20,24 +19,23 @@ export default function PathDetail({ id }: { id: number }) {
   const [celebrate, setCelebrate] = useState(false);
 
   const refresh = async () => {
-    await utils.paths.get.invalidate({ id });
-    await utils.paths.list.invalidate();
-    await utils.paths.progression.invalidate();
+    await utils.playlists.get.invalidate({ id });
+    await utils.playlists.mine.invalidate();
   };
-  const addItem = trpc.paths.addItem.useMutation({
+  const addItem = trpc.playlists.addItem.useMutation({
     onSuccess: async () => {
       setTitle("");
       setUrl("");
       await refresh();
-      toast.success("Step added");
+      toast.success("Course added");
     },
     onError: (e) => toast.error(e.message),
   });
-  const setStatus = trpc.paths.setItemStatus.useMutation({ onSuccess: refresh });
+  const setStatus = trpc.playlists.setItemStatus.useMutation({ onSuccess: refresh });
 
-  if (path.isLoading) return <Spinner label="Loading…" />;
-  if (!path.data) return <p className="text-ink/50">Path not found.</p>;
-  const p = path.data;
+  if (playlist.isLoading) return <Spinner label="Loading…" />;
+  if (!playlist.data) return <p className="text-ink/50">Playlist not found.</p>;
+  const p = playlist.data;
 
   const nextItem = p.items.find((i) => !i.done);
   const isComplete = p.itemCount > 0 && p.progress === 100;
@@ -56,30 +54,22 @@ export default function PathDetail({ id }: { id: number }) {
         to="/paths"
         className="inline-flex items-center gap-1 text-sm text-navy/60 transition hover:text-navy"
       >
-        <ArrowLeft className="h-4 w-4" /> All paths
+        <ArrowLeft className="h-4 w-4" /> My Learning
       </Link>
 
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-navy-900">{p.title}</h1>
-        {p.dimensions.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {p.dimensions.map((d) => (
-              <DimensionChip key={d} dimension={d} />
-            ))}
-          </div>
-        )}
         <div className="mt-4 flex items-center gap-3">
           <ProgressBar value={p.progress} className="flex-1" />
           <span className="text-sm font-semibold text-navy-900">{p.progress}%</span>
         </div>
       </div>
 
-      {/* Completion / resume banner */}
       {isComplete ? (
         <Card className="flex items-center gap-3 border-emerald-200 bg-emerald-50 p-4">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
           <p className="text-sm font-medium text-emerald-900">
-            You've completed this path — every step done. 🎉
+            You've finished every course in this playlist. 🎉
           </p>
         </Card>
       ) : nextItem ? (
@@ -105,9 +95,9 @@ export default function PathDetail({ id }: { id: number }) {
       ) : null}
 
       <Card className="p-6">
-        <h2 className="mb-4 text-base font-semibold text-navy-900">Steps</h2>
+        <h2 className="mb-4 text-base font-semibold text-navy-900">Courses</h2>
         {p.items.length === 0 ? (
-          <p className="text-ink/50">No steps yet — add the first below.</p>
+          <p className="text-ink/50">No courses yet — add the first below.</p>
         ) : (
           <ul className="space-y-2">
             {p.items.map((it) => (
@@ -134,10 +124,7 @@ export default function PathDetail({ id }: { id: number }) {
                 </button>
                 <div className="flex-1">
                   <span
-                    className={cn(
-                      "font-medium",
-                      it.done ? "text-ink/40 line-through" : "text-ink",
-                    )}
+                    className={cn("font-medium", it.done ? "text-ink/40 line-through" : "text-ink")}
                   >
                     {it.title}
                   </span>
@@ -164,19 +151,19 @@ export default function PathDetail({ id }: { id: number }) {
       </Card>
 
       <Card className="p-6">
-        <h2 className="mb-4 text-base font-semibold text-navy-900">Add a step</h2>
+        <h2 className="mb-4 text-base font-semibold text-navy-900">Add a course</h2>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             if (title.trim())
-              addItem.mutate({ pathId: id, title: title.trim(), platform, url: url || undefined });
+              addItem.mutate({ playlistId: id, title: title.trim(), platform, url: url || undefined });
           }}
           className="space-y-3"
         >
           <TextInput
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Step title (e.g. Python Basics — Coursera)"
+            placeholder="Course title (e.g. React — Full Course)"
           />
           <div className="flex flex-col gap-2 sm:flex-row">
             <Select value={platform} onChange={(e) => setPlatform(e.target.value as Platform)}>
@@ -194,15 +181,15 @@ export default function PathDetail({ id }: { id: number }) {
             />
           </div>
           <Button type="submit" icon={Plus} disabled={addItem.isPending}>
-            Add step
+            Add course
           </Button>
         </form>
       </Card>
 
       {celebrate && (
         <Celebration
-          title="Path complete!"
-          message={`You finished "${p.title}". Your development gauges just moved.`}
+          title="Playlist complete!"
+          message={`You finished every course in "${p.title}". Nicely done.`}
           onClose={() => setCelebrate(false)}
         />
       )}

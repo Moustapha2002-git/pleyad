@@ -587,3 +587,43 @@ export const quizAttempts = mysqlTable(
 
 export type QuizAttempt = typeof quizAttempts.$inferSelect;
 export type InsertQuizAttempt = typeof quizAttempts.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────
+// NOTIFICATIONS — in-app activity feed. One row per (recipient, event). The
+// `linkTo` is a client route the item deep-links to; unread = readAt IS NULL.
+// ─────────────────────────────────────────────────────────────────────────
+
+export const NOTIFICATION_TYPES = [
+  "path_assigned",
+  "task",
+  "feedback",
+  "session",
+  "quiz",
+  "message",
+] as const;
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+export const notifications = mysqlTable(
+  "notifications",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    organizationId: int("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    userId: int("user_id") // the recipient
+      .notNull()
+      .references(() => users.id),
+    type: mysqlEnum("type", NOTIFICATION_TYPES).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    body: varchar("body", { length: 512 }),
+    linkTo: varchar("link_to", { length: 255 }),
+    readAt: timestamp("read_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    userIdx: index("idx_notifications_user").on(t.organizationId, t.userId),
+  }),
+);
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;

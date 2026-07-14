@@ -1,4 +1,4 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import type { DB } from "../client";
 import { messages } from "../schema";
 
@@ -39,4 +39,24 @@ export async function sendMessage(
 ) {
   const [res] = await db.insert(messages).values(input);
   return res.insertId;
+}
+
+/** Mark every message from `fromUserId` to `toUserId` in this org as read. */
+export async function markThreadRead(
+  db: DB,
+  organizationId: number,
+  toUserId: number,
+  fromUserId: number,
+) {
+  await db
+    .update(messages)
+    .set({ readAt: new Date() })
+    .where(
+      and(
+        eq(messages.organizationId, organizationId),
+        eq(messages.recipientUserId, toUserId),
+        eq(messages.senderUserId, fromUserId),
+        isNull(messages.readAt),
+      ),
+    );
 }

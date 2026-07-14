@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { KeyRound, UserPlus } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { useToast } from "../components/Toast";
 import { Avatar, Badge, Button, Card, PageHeader, Select, Spinner, TextInput } from "../components/ui";
 
 type Role = "member" | "mentor" | "admin";
@@ -16,6 +17,7 @@ export default function Admin() {
   const me = trpc.auth.me.useQuery();
   const members = trpc.admin.members.useQuery();
   const utils = trpc.useUtils();
+  const toast = useToast();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -30,11 +32,31 @@ export default function Admin() {
       setEmail("");
       setRole("member");
       refresh();
+      toast.success(`${vars.name} added to the workspace`);
     },
+    onError: (e) => toast.error(e.message),
   });
-  const setMemberRole = trpc.admin.setRole.useMutation({ onSuccess: refresh });
-  const assignMentor = trpc.admin.assignMentor.useMutation({ onSuccess: refresh });
-  const unassignMentor = trpc.admin.unassignMentor.useMutation({ onSuccess: refresh });
+  const setMemberRole = trpc.admin.setRole.useMutation({
+    onSuccess: () => {
+      refresh();
+      toast.success("Role updated");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const assignMentor = trpc.admin.assignMentor.useMutation({
+    onSuccess: () => {
+      refresh();
+      toast.success("Mentor assigned");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const unassignMentor = trpc.admin.unassignMentor.useMutation({
+    onSuccess: () => {
+      refresh();
+      toast.info("Mentor unassigned");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const orgName = me.data?.activeOrganization?.name ?? "Workspace";
   const all = members.data ?? [];

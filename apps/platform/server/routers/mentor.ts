@@ -1,12 +1,17 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { db, mentorshipRepo, pathsRepo, usersRepo } from "@pleyad/db";
+import { db, mentorRepo, mentorshipRepo, pathsRepo, usersRepo } from "@pleyad/db";
 import { router, tenantProcedure } from "../trpc";
 
 export const mentorRouter = router({
   /** Learners assigned to the current user (as mentor) in the active workspace. */
   myLearners: tenantProcedure.query(({ ctx }) =>
     mentorshipRepo.getLearnersForMentor(db, ctx.tenant.organizationId, ctx.tenant.userId),
+  ),
+
+  /** Learners assigned to the current mentor, each enriched with cockpit stats. */
+  learnerStats: tenantProcedure.query(({ ctx }) =>
+    mentorRepo.getMentorLearnerStats(db, ctx.tenant.organizationId, ctx.tenant.userId),
   ),
 
   /** Mentors assigned to the current user (as learner) in the active workspace. */

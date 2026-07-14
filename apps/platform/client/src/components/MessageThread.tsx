@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useState } from "react";
 import { Send } from "lucide-react";
 import { trpc } from "../lib/trpc";
@@ -17,6 +18,15 @@ export function MessageThread({ withUserId, title }: { withUserId: number; title
       await utils.messages.thread.invalidate({ withUserId });
     },
   });
+
+  // Opening a thread marks it read → clears the mentor's unread badge for this learner.
+  const markRead = trpc.messages.markRead.useMutation({
+    onSuccess: () => utils.mentor.learnerStats.invalidate(),
+  });
+  useEffect(() => {
+    markRead.mutate({ withUserId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [withUserId]);
 
   return (
     <Card className="p-6">

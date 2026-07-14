@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { db, quizzesRepo } from "@pleyad/db";
+import { db, notificationsRepo, quizzesRepo } from "@pleyad/db";
 import { router, tenantProcedure } from "../trpc";
 
 const CAN_COACH = ["mentor", "admin", "owner"];
@@ -50,6 +50,14 @@ export const quizzesRouter = router({
         learnerUserId: input.learnerUserId,
         title: input.title,
         questions: input.questions,
+      });
+      await notificationsRepo.notify(db, {
+        organizationId: ctx.tenant.organizationId,
+        userId: input.learnerUserId,
+        type: "quiz",
+        title: "New quiz to take",
+        body: input.title,
+        linkTo: "/mentoring",
       });
       return { id };
     }),
