@@ -79,6 +79,14 @@ function TabLink({ item }: { item: NavItem }) {
   );
 }
 
+const ROLE_LABEL: Record<string, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  manager: "Manager",
+  mentor: "Mentor",
+  member: "Learner",
+};
+
 export function AppShell({ children }: { children: ReactNode }) {
   const me = trpc.auth.me.useQuery();
   const utils = trpc.useUtils();
@@ -87,6 +95,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   const items = useNavItems();
   const name = me.data?.name ?? me.data?.email ?? "";
+  const roleLabel = me.data?.activeOrganization
+    ? ROLE_LABEL[me.data.activeOrganization.role]
+    : null;
 
   return (
     <div className="min-h-full">
@@ -135,6 +146,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               PLEYAD
             </span>
             <WorkspaceSwitcher />
+            {roleLabel && (
+              <span className="hidden rounded-full bg-navy/10 px-2.5 py-0.5 text-xs font-semibold text-navy/70 sm:inline">
+                {roleLabel}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1 sm:gap-3">
             <NotificationBell />
