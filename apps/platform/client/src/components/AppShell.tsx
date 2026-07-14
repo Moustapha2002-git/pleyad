@@ -136,8 +136,23 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <WorkspaceSwitcher />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-3">
             <NotificationBell />
+            {/* Settings + Sign out — the sidebar is hidden on mobile, so surface them here */}
+            <Link
+              to="/settings"
+              className="rounded-lg p-2 text-ink/60 transition hover:bg-gray-100 hover:text-navy md:hidden"
+              aria-label="Settings"
+            >
+              <SettingsIcon className="h-5 w-5" />
+            </Link>
+            <button
+              onClick={() => logout.mutate()}
+              className="rounded-lg p-2 text-ink/60 transition hover:bg-gray-100 hover:text-navy md:hidden"
+              aria-label="Sign out"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
             <span className="hidden text-sm text-ink/60 sm:inline">{name}</span>
           </div>
         </header>
