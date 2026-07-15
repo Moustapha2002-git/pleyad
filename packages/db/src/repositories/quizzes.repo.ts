@@ -148,7 +148,15 @@ export async function submitAttempt(
     totalCount: total,
     score,
   });
-  return { score, correctCount: correct, totalCount: total };
+
+  // Per-question breakdown — safe to reveal now that the attempt is recorded.
+  const review = questions.map((q, i) => ({
+    prompt: q.prompt,
+    options: q.options,
+    yourIndex: answers[i] ?? -1,
+    correctIndex: q.correctIndex,
+  }));
+  return { score, correctCount: correct, totalCount: total, review };
 }
 
 export async function deleteQuiz(

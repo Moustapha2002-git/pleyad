@@ -11,6 +11,7 @@ import type { LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
 import { DimensionGauges } from "../components/DimensionGauges";
+import { GettingStarted } from "../components/GettingStarted";
 import { SessionList } from "../components/SessionList";
 import { Button, Card, EmptyState, ProgressBar, Spinner } from "../components/ui";
 
@@ -90,6 +91,9 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold tracking-tight text-navy-900">Hi {firstName} 👋</h1>
         <p className="mt-1 text-ink/55">Here's your development at a glance.</p>
       </div>
+
+      {/* First-visit onboarding (team learners; hides itself once complete) */}
+      <GettingStarted />
 
       {/* Quick stats */}
       <div className="grid grid-cols-3 gap-3">
