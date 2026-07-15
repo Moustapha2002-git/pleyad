@@ -1,14 +1,33 @@
-import { AlertTriangle, CalendarClock, ChevronRight, MessageSquare, Users } from "lucide-react";
-import { Link } from "wouter";
+import { useState } from "react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  ChevronRight,
+  MessageSquare,
+  Plus,
+  Users,
+} from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useToast } from "../components/Toast";
 import {
   Avatar,
+  Button,
   Card,
   EmptyState,
   ListSkeleton,
   PageHeader,
   ProgressBar,
+  TextInput,
+  cn,
 } from "../components/ui";
+
+const ALL_DIMENSIONS = [
+  { key: "knowledge", label: "Knowledge" },
+  { key: "skills", label: "Skills" },
+  { key: "human_development", label: "Human Development" },
+] as const;
+type Dim = (typeof ALL_DIMENSIONS)[number]["key"];
 
 const RISK: Record<string, { label: string; badge: string }> = {
   overdue: { label: "Overdue", badge: "bg-red-500/12 text-red-600" },
@@ -68,6 +87,24 @@ function Metric({
 export default function MentorLearners() {
   const stats = trpc.mentor.learnerStats.useQuery();
   const learners = stats.data ?? [];
+  const [, navigate] = useLocation();
+  const toast = useToast();
+
+  // Create-a-path from the cockpit (mentors author paths, then assign them).
+  const [showCreate, setShowCreate] = useState(false);
+  const [title, setTitle] = useState("");
+  const [dims, setDims] = useState<Dim[]>([]);
+  const utils = trpc.useUtils();
+  const createPath = trpc.paths.create.useMutation({
+    onSuccess: async (res) => {
+      await utils.paths.list.invalidate();
+      toast.success("Path created — now add its steps");
+      navigate(`/paths/${res.id}`);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const toggleDim = (d: Dim) =>
+    setDims((s) => (s.includes(d) ? s.filter((x) => x !== d) : [...s, d]));
 
   const atRisk = learners.filter((l) => l.atRisk).length;
   const unread = learners.reduce((s, l) => s + l.unread, 0);
@@ -75,7 +112,59 @@ export default function MentorLearners() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My learners" subtitle="Everyone you're mentoring, at a glance." />
+      <PageHeader
+        title="My learners"
+        subtitle="Everyone you're mentoring, at a glance."
+        action={
+          <Button icon={Plus} variant="secondary" onClick={() => setShowCreate((s) => !s)}>
+            {showCreate ? "Close" : "New path"}
+          </Button>
+        }
+      />
+
+      {/* Inline path builder — create here, add steps on the detail page, then assign */}
+      {showCreate && (
+        <Card className="p-6">
+          <h2 className="mb-1 text-base font-semibold text-navy-900">Create a learning path</h2>
+          <p className="mb-4 text-sm text-ink/55">
+            Give it a title and the dimensions it grows — you'll add its steps next, then assign
+            it to learners from their profiles.
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (title.trim()) createPath.mutate({ title: title.trim(), dimensions: dims });
+            }}
+            className="space-y-4"
+          >
+            <TextInput
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Path title (e.g. Digital Skills Foundations)"
+            />
+            <div className="flex flex-wrap gap-2">
+              {ALL_DIMENSIONS.map((d) => (
+                <button
+                  type="button"
+                  key={d.key}
+                  onClick={() => toggleDim(d.key)}
+                  className={cn(
+                    "rounded-full border px-3.5 py-1.5 text-sm font-medium transition",
+                    dims.includes(d.key)
+                      ? "border-navy-900 bg-navy-900 text-white"
+                      : "border-gray-200 text-ink/70 hover:border-navy/40",
+                  )}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+            <Button type="submit" disabled={!title.trim() || createPath.isPending}>
+              {createPath.isPending ? "Creating…" : "Create & add steps"}
+            </Button>
+          </form>
+        </Card>
+      )}
 
       {stats.isLoading ? (
         <ListSkeleton rows={4} />

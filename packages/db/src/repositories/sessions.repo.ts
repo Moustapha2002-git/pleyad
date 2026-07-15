@@ -55,6 +55,39 @@ export async function getSessionsForUser(db: DB, organizationId: number, userId:
     .orderBy(asc(mentoringSessions.scheduledAt));
 }
 
+/** Reschedule a session — only a participant may. Returns the row (for notifying the other side). */
+export async function rescheduleSession(
+  db: DB,
+  organizationId: number,
+  sessionId: number,
+  userId: number,
+  scheduledAt: Date,
+  durationMinutes?: number,
+) {
+  const rows = await db
+    .select()
+    .from(mentoringSessions)
+    .where(
+      and(
+        eq(mentoringSessions.id, sessionId),
+        eq(mentoringSessions.organizationId, organizationId),
+        eq(mentoringSessions.status, "scheduled"),
+        or(
+          eq(mentoringSessions.mentorUserId, userId),
+          eq(mentoringSessions.learnerUserId, userId),
+        ),
+      ),
+    );
+  const session = rows[0];
+  if (!session) return null;
+
+  await db
+    .update(mentoringSessions)
+    .set({ scheduledAt, ...(durationMinutes ? { durationMinutes } : {}) })
+    .where(eq(mentoringSessions.id, session.id));
+  return session;
+}
+
 /** Cancel a session — only a participant may cancel. */
 export async function cancelSession(
   db: DB,

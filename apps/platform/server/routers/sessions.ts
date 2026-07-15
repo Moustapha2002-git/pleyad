@@ -54,4 +54,41 @@ export const sessionsRouter = router({
     .mutation(({ ctx, input }) =>
       sessionsRepo.cancelSession(db, ctx.tenant.organizationId, input.id, ctx.tenant.userId),
     ),
+
+  /** Either participant moves a session to a new time; the other side is notified. */
+  reschedule: tenantProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        scheduledAt: z.string(),
+        durationMinutes: z.number().int().positive().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const when = new Date(input.scheduledAt);
+      if (Number.isNaN(when.getTime())) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid date/time" });
+      }
+      const session = await sessionsRepo.rescheduleSession(
+        db,
+        ctx.tenant.organizationId,
+        input.id,
+        ctx.tenant.userId,
+        when,
+        input.durationMinutes,
+      );
+      if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
+
+      const otherUserId =
+        session.mentorUserId === ctx.tenant.userId ? session.learnerUserId : session.mentorUserId;
+      await notificationsRepo.notify(db, {
+        organizationId: ctx.tenant.organizationId,
+        userId: otherUserId,
+        type: "session",
+        title: "Session rescheduled",
+        body: `${session.title} · now ${when.toLocaleString()}`,
+        linkTo: "/schedule",
+      });
+      return { ok: true };
+    }),
 });
