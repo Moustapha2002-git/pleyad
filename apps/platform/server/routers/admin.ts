@@ -90,4 +90,16 @@ export const adminRouter = router({
       );
       return { ok: true };
     }),
+
+  /** Rename the active workspace (org settings). */
+  renameWorkspace: adminProcedure
+    .input(z.object({ name: z.string().min(2).max(120) }))
+    .mutation(async ({ ctx, input }) => {
+      await organizationsRepo.renameOrganization(
+        db,
+        ctx.tenant.organizationId,
+        input.name.trim(),
+      );
+      return { ok: true };
+    }),
 });

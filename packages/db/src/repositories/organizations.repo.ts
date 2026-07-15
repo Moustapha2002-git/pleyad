@@ -86,6 +86,11 @@ export async function setMembershipRole(
     .where(and(eq(memberships.userId, userId), eq(memberships.organizationId, organizationId)));
 }
 
+/** Rename an organization (admin console → workspace settings). */
+export async function renameOrganization(db: DB, organizationId: number, name: string) {
+  await db.update(organizations).set({ name }).where(eq(organizations.id, organizationId));
+}
+
 /** All members of an organization (for the admin console). */
 export async function getOrganizationMembers(db: DB, organizationId: number) {
   return db
