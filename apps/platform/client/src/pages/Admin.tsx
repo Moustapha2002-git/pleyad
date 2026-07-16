@@ -125,6 +125,34 @@ export default function Admin() {
     onError: (e) => toast.error(e.message),
   });
 
+  // ── Branding ─────────────────────────────────────────────────────────────
+  const branding = me.data?.activeOrganization?.branding ?? null;
+  const [brandColor, setBrandColor] = useState<string | null>(null);
+  const [logo, setLogo] = useState<string | null | undefined>(undefined); // undefined = untouched
+  const updateBranding = trpc.admin.updateBranding.useMutation({
+    onSuccess: async () => {
+      await utils.auth.me.invalidate();
+      setBrandColor(null);
+      setLogo(undefined);
+      toast.success("Branding updated — the workspace now wears its colors");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const effectiveColor = brandColor ?? branding?.primaryColor ?? "#0a2540";
+  const effectiveLogo = logo === undefined ? (branding?.logoUrl ?? null) : logo;
+  const brandingDirty = brandColor !== null || logo !== undefined;
+
+  const onLogoFile = (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 250_000) {
+      toast.error("Logo is too large — please use an image under 250 KB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setLogo(String(reader.result));
+    reader.readAsDataURL(file);
+  };
+
   const currentOrgName = me.data?.activeOrganization?.name ?? "Workspace";
   const all = members.data ?? [];
   const mentors = all.filter((m) => ["mentor", "admin", "owner"].includes(m.role));
@@ -393,9 +421,68 @@ export default function Admin() {
             {renameWorkspace.isPending ? "Saving…" : "Rename"}
           </Button>
         </form>
-        <p className="mt-3 text-xs text-ink/45">
-          Logo & brand colors per workspace are coming with white-label theming.
-        </p>
+        {/* White-label branding */}
+        <div className="mt-6 border-t border-gray-100 pt-5">
+          <h3 className="mb-1 text-sm font-semibold text-navy-900">Branding</h3>
+          <p className="mb-4 text-xs text-ink/50">
+            Give this workspace its own identity — the logo and color apply for every member.
+          </p>
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="text-sm">
+              <span className="mb-1 block font-medium text-ink/80">Logo</span>
+              <div className="flex items-center gap-3">
+                {effectiveLogo ? (
+                  <img
+                    src={effectiveLogo}
+                    alt="Workspace logo"
+                    className="h-12 w-12 rounded-xl border border-gray-200 bg-white object-contain p-1"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-gray-300 text-xs text-ink/40">
+                    none
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                  onChange={(e) => onLogoFile(e.target.files?.[0])}
+                  className="max-w-48 text-xs text-ink/60 file:mr-2 file:rounded-lg file:border-0 file:bg-navy/10 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-navy"
+                />
+              </div>
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block font-medium text-ink/80">Primary color</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={effectiveColor}
+                  onChange={(e) => setBrandColor(e.target.value)}
+                  className="h-10 w-14 cursor-pointer rounded-lg border border-gray-200 bg-white p-1"
+                />
+                <code className="text-xs text-ink/50">{effectiveColor}</code>
+              </div>
+            </label>
+            <div className="flex gap-2">
+              <Button
+                onClick={() =>
+                  updateBranding.mutate({ primaryColor: effectiveColor, logoUrl: effectiveLogo })
+                }
+                disabled={updateBranding.isPending || !brandingDirty}
+              >
+                {updateBranding.isPending ? "Saving…" : "Save branding"}
+              </Button>
+              {(branding?.primaryColor || branding?.logoUrl) && (
+                <Button
+                  variant="secondary"
+                  onClick={() => updateBranding.mutate({ primaryColor: null, logoUrl: null })}
+                  disabled={updateBranding.isPending}
+                >
+                  Reset to Pleyad
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
       </Card>
     </div>
   );

@@ -91,6 +91,22 @@ export async function renameOrganization(db: DB, organizationId: number, name: s
   await db.update(organizations).set({ name }).where(eq(organizations.id, organizationId));
 }
 
+/** Set (or clear) the workspace's white-label branding. */
+export async function updateBranding(
+  db: DB,
+  organizationId: number,
+  input: { logoUrl: string | null; primaryColor: string | null; brandingEnabled: boolean },
+) {
+  await db
+    .update(organizations)
+    .set({
+      logoUrl: input.logoUrl,
+      primaryColor: input.primaryColor,
+      brandingEnabled: input.brandingEnabled,
+    })
+    .where(eq(organizations.id, organizationId));
+}
+
 /** All members of an organization (for the admin console). */
 export async function getOrganizationMembers(db: DB, organizationId: number) {
   return db

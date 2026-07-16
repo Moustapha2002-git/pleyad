@@ -22,6 +22,7 @@ export const authRouter = router({
             name: ctx.tenant.organizationName,
             type: ctx.tenant.organizationType,
             role: ctx.tenant.role,
+            branding: ctx.tenant.branding,
           }
         : null,
     };

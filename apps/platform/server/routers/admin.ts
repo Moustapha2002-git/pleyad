@@ -195,4 +195,32 @@ export const adminRouter = router({
       );
       return { ok: true };
     }),
+
+  /** White-label branding: logo (small data-URL or https) + primary color. */
+  updateBranding: adminProcedure
+    .input(
+      z.object({
+        primaryColor: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/, "Color must be a hex value like #0a2540")
+          .nullable(),
+        logoUrl: z
+          .string()
+          .max(400_000, "Logo image is too large — use one under ~300 KB")
+          .refine(
+            (v) => v.startsWith("data:image/") || v.startsWith("https://"),
+            "Logo must be an uploaded image or an https URL",
+          )
+          .nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const enabled = Boolean(input.primaryColor || input.logoUrl);
+      await organizationsRepo.updateBranding(db, ctx.tenant.organizationId, {
+        logoUrl: input.logoUrl,
+        primaryColor: input.primaryColor,
+        brandingEnabled: enabled,
+      });
+      return { ok: true };
+    }),
 });

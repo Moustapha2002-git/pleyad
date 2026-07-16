@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { applyBrandColor } from "../lib/branding";
 import { Avatar, cn } from "./ui";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { IncomingCallBanner } from "./IncomingCallBanner";
@@ -98,6 +100,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const roleLabel = me.data?.activeOrganization
     ? ROLE_LABEL[me.data.activeOrganization.role]
     : null;
+  const branding = me.data?.activeOrganization?.branding ?? null;
+  const orgName = me.data?.activeOrganization?.name ?? "";
+
+  // Re-theme to the workspace's brand color (and back) whenever it changes.
+  useEffect(() => {
+    applyBrandColor(branding?.primaryColor);
+    return () => applyBrandColor(null);
+  }, [branding?.primaryColor]);
 
   return (
     <div className="min-h-full">
@@ -107,9 +117,20 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Sidebar — desktop */}
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-navy-950 px-4 py-6 md:flex">
         <div className="px-2">
-          <span className="text-lg font-extrabold tracking-[0.28em] text-white">PLEYAD</span>
+          {branding?.logoUrl ? (
+            <div className="flex items-center gap-2.5">
+              <img
+                src={branding.logoUrl}
+                alt={orgName}
+                className="h-9 w-9 shrink-0 rounded-lg bg-white/10 object-contain p-1"
+              />
+              <span className="truncate text-base font-bold text-white">{orgName}</span>
+            </div>
+          ) : (
+            <span className="text-lg font-extrabold tracking-[0.28em] text-white">PLEYAD</span>
+          )}
           <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-white/35">
-            Operating system for learning
+            {branding?.logoUrl ? "Powered by Pleyad" : "Operating system for learning"}
           </p>
         </div>
         <nav className="mt-8 flex flex-1 flex-col gap-1">
@@ -142,9 +163,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="md:pl-64">
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-200/70 bg-white/80 px-5 py-3 backdrop-blur">
           <div className="flex items-center gap-3">
-            <span className="text-base font-extrabold tracking-[0.22em] text-navy-900 md:hidden">
-              PLEYAD
-            </span>
+            {branding?.logoUrl ? (
+              <img
+                src={branding.logoUrl}
+                alt={orgName}
+                className="h-8 w-8 shrink-0 rounded-lg object-contain md:hidden"
+              />
+            ) : (
+              <span className="text-base font-extrabold tracking-[0.22em] text-navy-900 md:hidden">
+                PLEYAD
+              </span>
+            )}
             <WorkspaceSwitcher />
             {roleLabel && (
               <span className="hidden rounded-full bg-navy/10 px-2.5 py-0.5 text-xs font-semibold text-navy/70 sm:inline">

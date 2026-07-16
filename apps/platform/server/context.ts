@@ -28,6 +28,7 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
     organizationName: string;
     organizationType: "personal" | "team";
     role: Role;
+    branding: { logoUrl: string | null; primaryColor: string | null } | null;
   } | null = null;
   if (user) {
     const memberships = await organizationsRepo.getUserMemberships(db, user.id);
@@ -46,6 +47,12 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
           organizationName: chosen.organization.name,
           organizationType: chosen.organization.type,
           role: chosen.membership.role,
+          branding: chosen.organization.brandingEnabled
+            ? {
+                logoUrl: chosen.organization.logoUrl,
+                primaryColor: chosen.organization.primaryColor,
+              }
+            : null,
         };
       }
     }
