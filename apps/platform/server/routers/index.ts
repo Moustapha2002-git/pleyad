@@ -6,6 +6,7 @@ import { callsRouter } from "./calls";
 import { coachingRouter } from "./coaching";
 import { collectionsRouter } from "./collections";
 import { devRouter } from "./dev";
+import { invitesRouter } from "./invites";
 import { mentorRouter } from "./mentor";
 import { messagesRouter } from "./messages";
 import { notificationsRouter } from "./notifications";
@@ -30,6 +31,7 @@ export const appRouter = router({
   quizzes: quizzesRouter,
   admin: adminRouter,
   analytics: analyticsRouter,
+  invites: invitesRouter,
   dev: devRouter,
 });
 

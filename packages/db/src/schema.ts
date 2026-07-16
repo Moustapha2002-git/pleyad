@@ -627,3 +627,36 @@ export const notifications = mysqlTable(
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────
+// INVITATIONS — reusable join links. Anyone with the link registers (or accepts
+// while signed in) and lands in the organization with the invite's role. No
+// email provider needed: the admin shares the link through their own channel.
+// ─────────────────────────────────────────────────────────────────────────
+
+export const invitations = mysqlTable(
+  "invitations",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    organizationId: int("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    role: mysqlEnum("role", ["member", "mentor", "admin"]).default("member").notNull(),
+    token: varchar("token", { length: 48 })
+      .notNull()
+      .unique()
+      .$defaultFn(() => nanoid(32)),
+    createdByUserId: int("created_by_user_id")
+      .notNull()
+      .references(() => users.id),
+    usedCount: int("used_count").default(0).notNull(),
+    revokedAt: timestamp("revoked_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    orgIdx: index("idx_invitations_org").on(t.organizationId),
+  }),
+);
+
+export type Invitation = typeof invitations.$inferSelect;
+export type InsertInvitation = typeof invitations.$inferInsert;

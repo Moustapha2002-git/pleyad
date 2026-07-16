@@ -57,6 +57,13 @@
       "when": 1783673024864,
       "tag": "0007_boring_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1784188217570,
+      "tag": "0008_furry_sersi",
+      "breakpoints": true
     }
   ]
 }

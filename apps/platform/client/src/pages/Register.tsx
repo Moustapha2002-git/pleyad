@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Building2 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
 import { AuthShell } from "../components/AuthShell";
@@ -11,6 +12,15 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  // Invite links land here as /register?invite=TOKEN
+  const [inviteToken] = useState(
+    () => new URLSearchParams(window.location.search).get("invite") ?? undefined,
+  );
+  const invite = trpc.invites.info.useQuery(
+    { token: inviteToken ?? "" },
+    { enabled: Boolean(inviteToken) },
+  );
+
   const register = trpc.auth.register.useMutation({
     onSuccess: async () => {
       await utils.auth.me.invalidate();
@@ -18,10 +28,16 @@ export default function Register() {
     },
   });
 
+  const joining = inviteToken && invite.data ? invite.data : null;
+
   return (
     <AuthShell
-      title="Create your space"
-      subtitle="Start centralizing your learning in one place"
+      title={joining ? `Join ${joining.organizationName}` : "Create your space"}
+      subtitle={
+        joining
+          ? `You've been invited as a ${joining.roleLabel.toLowerCase()}.`
+          : "Start centralizing your learning in one place"
+      }
       footer={
         <>
           Already have an account?{" "}
@@ -31,11 +47,33 @@ export default function Register() {
         </>
       }
     >
+      {joining && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/10 p-4">
+          <Building2 className="h-5 w-5 shrink-0 text-gold" />
+          <p className="text-sm text-ink/80">
+            Creating an account here adds you to{" "}
+            <span className="font-semibold text-navy-900">{joining.organizationName}</span> as a{" "}
+            <span className="font-semibold text-navy-900">{joining.roleLabel}</span>.
+          </p>
+        </div>
+      )}
+      {inviteToken && invite.data === null && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          This invite link is no longer valid — you can still create a personal space, or ask your
+          organization for a new link.
+        </div>
+      )}
+
       <form
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
-          register.mutate({ name, email, password });
+          register.mutate({
+            name,
+            email,
+            password,
+            inviteToken: joining ? inviteToken : undefined,
+          });
         }}
       >
         <Field
@@ -61,7 +99,11 @@ export default function Register() {
         />
         {register.error && <p className="text-sm text-red-600">{register.error.message}</p>}
         <Button type="submit" className="w-full" disabled={register.isPending}>
-          {register.isPending ? "Creating…" : "Create my space"}
+          {register.isPending
+            ? "Creating…"
+            : joining
+              ? `Join ${joining.organizationName}`
+              : "Create my space"}
         </Button>
       </form>
     </AuthShell>

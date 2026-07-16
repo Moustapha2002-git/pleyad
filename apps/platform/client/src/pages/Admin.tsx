@@ -13,6 +13,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
+import { InviteAndImport } from "../components/InviteAndImport";
 import { useToast } from "../components/Toast";
 import {
   Avatar,
@@ -232,6 +233,9 @@ export default function Admin() {
           </div>
         )}
       </Card>
+
+      {/* Join links + cohort import */}
+      <InviteAndImport mentors={mentors} />
 
       {/* Members */}
       <Card className="p-4 sm:p-6">
