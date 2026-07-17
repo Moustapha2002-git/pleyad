@@ -109,7 +109,7 @@ export default function PlaylistDetail({ id }: { id: number }) {
         {p.items.length === 0 ? (
           <Card className="p-6 text-ink/50">No courses yet — add the first below.</Card>
         ) : (
-          <div className="space-y-2.5">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {p.items.map((it) => (
               <SkillCard
                 key={it.itemId}
