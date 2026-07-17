@@ -64,4 +64,10 @@ export const playlistsRouter = router({
     .mutation(({ ctx, input }) =>
       pathsRepo.setItemStatus(ctx.tenant, input.resourceId, input.done),
     ),
+
+  setItemProgress: tenantProcedure
+    .input(z.object({ resourceId: z.number(), progress: z.number().int().min(0).max(100) }))
+    .mutation(({ ctx, input }) =>
+      pathsRepo.setItemProgress(ctx.tenant, input.resourceId, input.progress),
+    ),
 });

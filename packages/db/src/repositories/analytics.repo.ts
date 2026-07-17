@@ -131,14 +131,12 @@ export async function getCohortOverview(
     arr.push(d.dimension);
     dimsByCollection.set(d.collectionId, arr);
   }
-  const doneByUser = new Map<number, Set<number>>(); // userId -> completed resourceIds
+  const progByUser = new Map<number, Map<number, number>>(); // userId -> resourceId -> 0-100
   const lastActivityByUser = new Map<number, number>(); // userId -> latest activity ms
   for (const a of acts) {
-    if (a.status === "completed") {
-      const set = doneByUser.get(a.userId) ?? new Set<number>();
-      set.add(a.resourceId);
-      doneByUser.set(a.userId, set);
-    }
+    const m = progByUser.get(a.userId) ?? new Map<number, number>();
+    m.set(a.resourceId, a.status === "completed" ? 100 : Math.max(0, Math.min(100, a.progress)));
+    progByUser.set(a.userId, m);
     if (a.lastActivityAt) {
       const t = new Date(a.lastActivityAt).getTime();
       if (t > (lastActivityByUser.get(a.userId) ?? 0)) lastActivityByUser.set(a.userId, t);
@@ -146,13 +144,13 @@ export async function getCohortOverview(
   }
   const mentorByLearner = new Map(mentorLinks.map((m) => [m.learnerUserId, m.mentorUserId]));
 
+  // Average of per-item progress — the same formula the learner-facing views use.
   const pathProgress = (userId: number, collectionId: number): number => {
     const resIds = itemsByCollection.get(collectionId) ?? [];
     if (resIds.length === 0) return 0;
-    const done = doneByUser.get(userId);
-    if (!done) return 0;
-    const completed = resIds.filter((r) => done.has(r)).length;
-    return Math.round((completed / resIds.length) * 100);
+    const prog = progByUser.get(userId);
+    const sum = resIds.reduce((s, r) => s + (prog?.get(r) ?? 0), 0);
+    return Math.round(sum / resIds.length);
   };
 
   // ── Walk every learner ─────────────────────────────────────────────────────

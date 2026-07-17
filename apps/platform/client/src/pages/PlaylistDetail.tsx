@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Check, CheckCircle2, ExternalLink, Plus } from "
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
 import { Celebration } from "../components/Celebration";
+import { SkillCard } from "../components/SkillCard";
 import { useToast } from "../components/Toast";
 import { Button, Card, ProgressBar, Select, Spinner, TextInput, cn } from "../components/ui";
 
@@ -31,7 +32,10 @@ export default function PlaylistDetail({ id }: { id: number }) {
     },
     onError: (e) => toast.error(e.message),
   });
-  const setStatus = trpc.playlists.setItemStatus.useMutation({ onSuccess: refresh });
+  const setProgress = trpc.playlists.setItemProgress.useMutation({
+    onSuccess: refresh,
+    onError: (e) => toast.error(e.message),
+  });
 
   if (playlist.isLoading) return <Spinner label="Loading…" />;
   if (!playlist.data) return <p className="text-ink/50">Playlist not found.</p>;
@@ -40,10 +44,11 @@ export default function PlaylistDetail({ id }: { id: number }) {
   const nextItem = p.items.find((i) => !i.done);
   const isComplete = p.itemCount > 0 && p.progress === 100;
 
-  const toggle = (it: (typeof p.items)[number]) => {
-    const willComplete = !it.done && p.itemCount > 0 && p.completedCount + 1 === p.itemCount;
-    setStatus.mutate(
-      { resourceId: it.resourceId, done: !it.done },
+  const setSkillProgress = (it: (typeof p.items)[number], progress: number) => {
+    const willComplete =
+      !it.done && progress >= 100 && p.itemCount > 0 && p.completedCount + 1 === p.itemCount;
+    setProgress.mutate(
+      { resourceId: it.resourceId, progress },
       { onSuccess: () => willComplete && setCelebrate(true) },
     );
   };
@@ -94,61 +99,28 @@ export default function PlaylistDetail({ id }: { id: number }) {
         </Card>
       ) : null}
 
-      <Card className="p-6">
-        <h2 className="mb-4 text-base font-semibold text-navy-900">Courses</h2>
+      <div>
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="text-base font-semibold text-navy-900">Courses</h2>
+          <span className="text-sm text-ink/45">
+            {p.completedCount}/{p.itemCount} finished
+          </span>
+        </div>
         {p.items.length === 0 ? (
-          <p className="text-ink/50">No courses yet — add the first below.</p>
+          <Card className="p-6 text-ink/50">No courses yet — add the first below.</Card>
         ) : (
-          <ul className="space-y-2">
+          <div className="space-y-2.5">
             {p.items.map((it) => (
-              <li
+              <SkillCard
                 key={it.itemId}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl border px-3 py-2.5 transition",
-                  it.itemId === nextItem?.itemId
-                    ? "border-navy/30 bg-navy/[0.03] ring-1 ring-navy/10"
-                    : "border-gray-100",
-                )}
-              >
-                <button
-                  onClick={() => toggle(it)}
-                  className={cn(
-                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition",
-                    it.done
-                      ? "border-navy-900 bg-navy-900 text-white"
-                      : "border-gray-300 text-transparent hover:border-navy/50",
-                  )}
-                  aria-label={it.done ? "Mark not done" : "Mark done"}
-                >
-                  <Check className="h-4 w-4" />
-                </button>
-                <div className="flex-1">
-                  <span
-                    className={cn("font-medium", it.done ? "text-ink/40 line-through" : "text-ink")}
-                  >
-                    {it.title}
-                  </span>
-                  {it.platform && (
-                    <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-ink/50">
-                      {it.platform}
-                    </span>
-                  )}
-                </div>
-                {it.url && (
-                  <a
-                    href={it.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-sm text-navy/60 transition hover:text-navy"
-                  >
-                    Open <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                )}
-              </li>
+                item={it}
+                isNext={it.itemId === nextItem?.itemId}
+                onProgress={(progress) => setSkillProgress(it, progress)}
+              />
             ))}
-          </ul>
+          </div>
         )}
-      </Card>
+      </div>
 
       <Card className="p-6">
         <h2 className="mb-4 text-base font-semibold text-navy-900">Add a course</h2>

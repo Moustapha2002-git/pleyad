@@ -97,14 +97,12 @@ export async function listLearnerDirectory(
     arr.push(it.resourceId);
     itemsByCollection.set(it.collectionId, arr);
   }
-  const doneByUser = new Map<number, Set<number>>();
+  const progByUser = new Map<number, Map<number, number>>();
   const lastActByUser = new Map<number, number>();
   for (const a of acts) {
-    if (a.status === "completed") {
-      const set = doneByUser.get(a.userId) ?? new Set<number>();
-      set.add(a.resourceId);
-      doneByUser.set(a.userId, set);
-    }
+    const m = progByUser.get(a.userId) ?? new Map<number, number>();
+    m.set(a.resourceId, a.status === "completed" ? 100 : Math.max(0, Math.min(100, a.progress)));
+    progByUser.set(a.userId, m);
     if (a.lastActivityAt) {
       const t = new Date(a.lastActivityAt).getTime();
       if (t > (lastActByUser.get(a.userId) ?? 0)) lastActByUser.set(a.userId, t);
@@ -119,14 +117,14 @@ export async function listLearnerDirectory(
 
   return mems.map((m) => {
     const mine = assigns.filter((a) => a.learnerUserId === m.userId);
-    const done = doneByUser.get(m.userId);
+    const prog = progByUser.get(m.userId);
     let sum = 0;
     let completed = 0;
     for (const a of mine) {
       const resIds = itemsByCollection.get(a.collectionId) ?? [];
       const total = resIds.length;
-      const dc = total && done ? resIds.filter((r) => done.has(r)).length : 0;
-      const progress = total > 0 ? Math.round((dc / total) * 100) : 0;
+      const progress =
+        total > 0 ? Math.round(resIds.reduce((s, r) => s + (prog?.get(r) ?? 0), 0) / total) : 0;
       sum += progress;
       if (total > 0 && progress === 100) completed++;
     }

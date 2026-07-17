@@ -54,6 +54,13 @@ export const pathsRouter = router({
       pathsRepo.setItemStatus(ctx.tenant, input.resourceId, input.done),
     ),
 
+  /** Self-reported 0–100 progress on a skill/course (100 = completed). */
+  setItemProgress: tenantProcedure
+    .input(z.object({ resourceId: z.number(), progress: z.number().int().min(0).max(100) }))
+    .mutation(({ ctx, input }) =>
+      pathsRepo.setItemProgress(ctx.tenant, input.resourceId, input.progress),
+    ),
+
   // ── Assignments ──────────────────────────────────────────────────────
   /** Paths assigned to the current user (the learner's own view). */
   assigned: tenantProcedure.query(({ ctx }) =>

@@ -18,7 +18,37 @@ type PlatformType = NonNullable<InsertLearningResource["platform"]>;
  * Learning paths = collections with kind="path", tagged with 1–3 dimensions.
  * Progress and the per-dimension gauges are DERIVED from user_activities — there
  * are no stored counters to keep in sync.
+ *
+ * Progress model: each item (skill/course) carries 0–100 self-reported progress
+ * (user_activities.progress; status completed ⇒ 100). A path's progress is the
+ * AVERAGE of its items' progress — partial work counts everywhere.
  */
+
+/** resourceId → 0–100 progress for one user (completed always counts as 100). */
+function progressMap(acts: { resourceId: number; status: string; progress: number }[]) {
+  const m = new Map<number, number>();
+  for (const a of acts) {
+    m.set(
+      a.resourceId,
+      a.status === "completed" ? 100 : Math.max(0, Math.min(100, a.progress ?? 0)),
+    );
+  }
+  return m;
+}
+
+/** Aggregate a set of item resource-ids against a user's progress map. */
+function pathStats(resourceIds: number[], prog: Map<number, number>) {
+  const total = resourceIds.length;
+  if (total === 0) return { total, completed: 0, progress: 0 };
+  let sum = 0;
+  let completed = 0;
+  for (const r of resourceIds) {
+    const p = prog.get(r) ?? 0;
+    sum += p;
+    if (p >= 100) completed++;
+  }
+  return { total, completed, progress: Math.round(sum / total) };
+}
 
 export async function createPath(
   ctx: TenantContext,
@@ -66,23 +96,23 @@ export async function listPathsForUser(db: DB, organizationId: number, userId: n
           and(eq(userActivities.userId, userId), inArray(userActivities.resourceId, resourceIds)),
         )
     : [];
-  const doneResourceIds = new Set(
-    acts.filter((a) => a.status === "completed").map((a) => a.resourceId),
-  );
+  const prog = progressMap(acts);
 
   return paths.map((p) => {
     const pItems = items.filter((i) => i.collectionId === p.id);
-    const total = pItems.length;
-    const completed = pItems.filter((i) => doneResourceIds.has(i.resourceId)).length;
+    const stats = pathStats(
+      pItems.map((i) => i.resourceId),
+      prog,
+    );
     return {
       id: p.id,
       publicId: p.publicId,
       title: p.title,
       description: p.description,
       dimensions: dims.filter((d) => d.collectionId === p.id).map((d) => d.dimension),
-      itemCount: total,
-      completedCount: completed,
-      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+      itemCount: stats.total,
+      completedCount: stats.completed,
+      progress: stats.progress,
     };
   });
 }
@@ -122,20 +152,22 @@ export async function listPlaylistsForOwner(db: DB, organizationId: number, user
           and(eq(userActivities.userId, userId), inArray(userActivities.resourceId, resourceIds)),
         )
     : [];
-  const done = new Set(acts.filter((a) => a.status === "completed").map((a) => a.resourceId));
+  const prog = progressMap(acts);
 
   return rows.map((p) => {
     const pItems = items.filter((i) => i.collectionId === p.id);
-    const total = pItems.length;
-    const completed = pItems.filter((i) => done.has(i.resourceId)).length;
+    const stats = pathStats(
+      pItems.map((i) => i.resourceId),
+      prog,
+    );
     return {
       id: p.id,
       publicId: p.publicId,
       title: p.title,
       description: p.description,
-      itemCount: total,
-      completedCount: completed,
-      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+      itemCount: stats.total,
+      completedCount: stats.completed,
+      progress: stats.progress,
     };
   });
 }
@@ -174,19 +206,25 @@ export async function getPath(ctx: TenantContext, id: number) {
           ),
         )
     : [];
-  const doneSet = new Set(
-    acts.filter((a) => a.status === "completed").map((a) => a.resourceId),
-  );
+  const prog = progressMap(acts);
 
-  const items = joined.map((r) => ({
-    itemId: r.item.id,
-    resourceId: r.resource.id,
-    title: r.resource.title,
-    platform: r.resource.platform,
-    url: r.resource.url,
-    done: doneSet.has(r.resource.id),
-  }));
-  const completed = items.filter((i) => i.done).length;
+  const items = joined.map((r) => {
+    const p = prog.get(r.resource.id) ?? 0;
+    return {
+      itemId: r.item.id,
+      resourceId: r.resource.id,
+      title: r.resource.title,
+      platform: r.resource.platform,
+      url: r.resource.url,
+      thumbnailUrl: r.resource.thumbnailUrl,
+      progress: p,
+      done: p >= 100,
+    };
+  });
+  const stats = pathStats(
+    items.map((i) => i.resourceId),
+    prog,
+  );
 
   return {
     id: path.id,
@@ -195,9 +233,9 @@ export async function getPath(ctx: TenantContext, id: number) {
     description: path.description,
     dimensions: dims,
     items,
-    itemCount: items.length,
-    completedCount: completed,
-    progress: items.length > 0 ? Math.round((completed / items.length) * 100) : 0,
+    itemCount: stats.total,
+    completedCount: stats.completed,
+    progress: stats.progress,
   };
 }
 
@@ -255,6 +293,30 @@ export async function addItemToPath(
     position: siblings.length,
   });
   return { resourceId, itemId: itemRes.insertId };
+}
+
+/** Self-reported progress on one skill/course (0–100). 100 ⇒ completed. */
+export async function setItemProgress(ctx: TenantContext, resourceId: number, progress: number) {
+  const p = Math.max(0, Math.min(100, Math.round(progress)));
+  const existing = await ctx.db
+    .select()
+    .from(userActivities)
+    .where(
+      and(eq(userActivities.userId, ctx.userId), eq(userActivities.resourceId, resourceId)),
+    );
+  const now = new Date();
+  const values = {
+    status: p >= 100 ? ("completed" as const) : p > 0 ? ("in_progress" as const) : ("not_started" as const),
+    progress: p,
+    completedAt: p >= 100 ? now : null,
+    lastActivityAt: now,
+  };
+  if (existing[0]) {
+    await ctx.db.update(userActivities).set(values).where(eq(userActivities.id, existing[0].id));
+  } else {
+    await ctx.db.insert(userActivities).values({ userId: ctx.userId, resourceId, ...values });
+  }
+  return { success: true, progress: p };
 }
 
 export async function setItemStatus(ctx: TenantContext, resourceId: number, done: boolean) {
@@ -379,21 +441,23 @@ export async function getAssignedPaths(db: DB, organizationId: number, learnerUs
           ),
         )
     : [];
-  const done = new Set(acts.filter((a) => a.status === "completed").map((a) => a.resourceId));
+  const prog = progressMap(acts);
 
   return paths.map((p) => {
     const pItems = items.filter((i) => i.collectionId === p.id);
-    const total = pItems.length;
-    const completed = pItems.filter((i) => done.has(i.resourceId)).length;
+    const stats = pathStats(
+      pItems.map((i) => i.resourceId),
+      prog,
+    );
     return {
       id: p.id,
       publicId: p.publicId,
       title: p.title,
       description: p.description,
       dimensions: dims.filter((d) => d.collectionId === p.id).map((d) => d.dimension),
-      itemCount: total,
-      completedCount: completed,
-      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+      itemCount: stats.total,
+      completedCount: stats.completed,
+      progress: stats.progress,
       dueAt: dueByCollection.get(p.id) ?? null,
     };
   });
