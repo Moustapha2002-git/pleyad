@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { db, notificationsRepo, pathsRepo } from "@pleyad/db";
+import { db, mentorshipRepo, notificationsRepo, organizationsRepo, pathsRepo } from "@pleyad/db";
 import { router, tenantProcedure } from "../trpc";
 
 const DIMENSION = z.enum(["knowledge", "skills", "human_development"]);
@@ -101,6 +101,86 @@ export const pathsRouter = router({
         linkTo: `/paths/${input.collectionId}`,
       });
       return { ok: true };
+    }),
+
+  /**
+   * Learners this user may bulk-assign the path to, with already-assigned flags.
+   * Mentors see their own mentees; admins/owners see every learner in the org.
+   */
+  candidates: tenantProcedure
+    .input(z.object({ collectionId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      if (!CAN_ASSIGN.includes(ctx.tenant.role)) throw new TRPCError({ code: "FORBIDDEN" });
+
+      const isAdmin = ctx.tenant.role === "admin" || ctx.tenant.role === "owner";
+      const learners = isAdmin
+        ? (await organizationsRepo.getOrganizationMembers(db, ctx.tenant.organizationId))
+            .filter((m) => m.role === "member")
+            .map((m) => ({ id: m.userId, name: m.name, email: m.email }))
+        : await mentorshipRepo.getLearnersForMentor(
+            db,
+            ctx.tenant.organizationId,
+            ctx.tenant.userId,
+          );
+
+      const assigned = new Set(
+        await pathsRepo.getAssignedLearnerIds(db, ctx.tenant.organizationId, input.collectionId),
+      );
+      return learners.map((l) => ({
+        id: l.id,
+        name: l.name,
+        email: l.email,
+        alreadyAssigned: assigned.has(l.id),
+      }));
+    }),
+
+  /** Assign one path to many learners at once (cohort action). */
+  assignBulk: tenantProcedure
+    .input(
+      z.object({
+        collectionId: z.number(),
+        learnerUserIds: z.array(z.number()).min(1).max(500),
+        dueAt: z.string().nullish(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!CAN_ASSIGN.includes(ctx.tenant.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      const isAdmin = ctx.tenant.role === "admin" || ctx.tenant.role === "owner";
+      const due = input.dueAt ? new Date(input.dueAt) : null;
+      const path = await pathsRepo.getPath(ctx.tenant, input.collectionId);
+      if (!path) throw new TRPCError({ code: "NOT_FOUND", message: "Path not found" });
+
+      let assignedCount = 0;
+      for (const learnerUserId of input.learnerUserIds) {
+        // Mentors may only assign to their own mentees; admins to any learner.
+        if (!isAdmin) {
+          const mine = await mentorshipRepo.isMentorOf(
+            db,
+            ctx.tenant.organizationId,
+            ctx.tenant.userId,
+            learnerUserId,
+          );
+          if (!mine) continue;
+        }
+        await pathsRepo.assignPath(
+          db,
+          ctx.tenant.organizationId,
+          input.collectionId,
+          learnerUserId,
+          ctx.tenant.userId,
+          due,
+        );
+        await notificationsRepo.notify(db, {
+          organizationId: ctx.tenant.organizationId,
+          userId: learnerUserId,
+          type: "path_assigned",
+          title: "New learning path assigned",
+          body: path.title,
+          linkTo: `/paths/${input.collectionId}`,
+        });
+        assignedCount++;
+      }
+      return { assignedCount };
     }),
 
   unassign: tenantProcedure

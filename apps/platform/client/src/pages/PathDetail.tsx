@@ -1,23 +1,63 @@
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, ExternalLink, Plus } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  ExternalLink,
+  Plus,
+  UsersRound,
+} from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
 import { Celebration } from "../components/Celebration";
 import { DimensionChip } from "../components/DimensionGauges";
 import { useToast } from "../components/Toast";
-import { Button, Card, ProgressBar, Select, Spinner, TextInput, cn } from "../components/ui";
+import { Avatar, Button, Card, ProgressBar, Select, Spinner, TextInput, cn } from "../components/ui";
 
 const PLATFORMS = ["youtube", "coursera", "udemy", "edx", "linkedin", "other"] as const;
 type Platform = (typeof PLATFORMS)[number];
 
 export default function PathDetail({ id }: { id: number }) {
   const path = trpc.paths.get.useQuery({ id });
+  const me = trpc.auth.me.useQuery();
   const utils = trpc.useUtils();
   const toast = useToast();
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [platform, setPlatform] = useState<Platform>("youtube");
   const [celebrate, setCelebrate] = useState(false);
+
+  // ── Bulk assignment (mentors/admins in a team workspace) ────────────────
+  const role = me.data?.activeOrganization?.role;
+  const canAssign =
+    me.data?.activeOrganization?.type === "team" &&
+    (role === "mentor" || role === "admin" || role === "owner");
+  const candidates = trpc.paths.candidates.useQuery(
+    { collectionId: id },
+    { enabled: canAssign },
+  );
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkDue, setBulkDue] = useState("");
+  const assignBulk = trpc.paths.assignBulk.useMutation({
+    onSuccess: (res) => {
+      setSelected(new Set());
+      setBulkDue("");
+      utils.paths.candidates.invalidate({ collectionId: id });
+      toast.success(
+        `Path assigned to ${res.assignedCount} learner${res.assignedCount === 1 ? "" : "s"}`,
+      );
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const toggleLearner = (learnerId: number) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(learnerId)) next.delete(learnerId);
+      else next.add(learnerId);
+      return next;
+    });
+  const unassignedCandidates = (candidates.data ?? []).filter((c) => !c.alreadyAssigned);
 
   const refresh = async () => {
     await utils.paths.get.invalidate({ id });
@@ -198,6 +238,100 @@ export default function PathDetail({ id }: { id: number }) {
           </Button>
         </form>
       </Card>
+
+      {/* Cohort assignment — one path, many learners */}
+      {canAssign && (candidates.data?.length ?? 0) > 0 && (
+        <Card className="p-6">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-base font-semibold text-navy-900">
+              <UsersRound className="h-4 w-4" /> Assign this path
+            </h2>
+            {unassignedCandidates.length > 0 && (
+              <button
+                onClick={() =>
+                  setSelected((s) =>
+                    s.size === unassignedCandidates.length
+                      ? new Set()
+                      : new Set(unassignedCandidates.map((c) => c.id)),
+                  )
+                }
+                className="text-xs font-medium text-navy/60 transition hover:text-navy"
+              >
+                {selected.size === unassignedCandidates.length ? "Clear selection" : "Select all"}
+              </button>
+            )}
+          </div>
+          <p className="mb-4 text-sm text-ink/55">
+            Pick learners and assign them this path in one go.
+          </p>
+
+          <div className="mb-4 grid gap-1.5 sm:grid-cols-2">
+            {(candidates.data ?? []).map((c) => {
+              const checked = c.alreadyAssigned || selected.has(c.id);
+              return (
+                <button
+                  key={c.id}
+                  disabled={c.alreadyAssigned}
+                  onClick={() => toggleLearner(c.id)}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition",
+                    c.alreadyAssigned
+                      ? "border-gray-100 opacity-50"
+                      : checked
+                        ? "border-navy-900 bg-navy/[0.04]"
+                        : "border-gray-200 hover:border-navy/40",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
+                      checked
+                        ? "border-navy-900 bg-navy-900 text-white"
+                        : "border-gray-300 text-transparent",
+                    )}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </span>
+                  <Avatar name={c.name ?? c.email ?? "?"} className="h-7 w-7 text-[10px]" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-navy-900">
+                    {c.name ?? c.email}
+                  </span>
+                  {c.alreadyAssigned && (
+                    <span className="shrink-0 text-[11px] text-ink/40">assigned</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:items-end">
+            <label className="text-sm">
+              <span className="mb-1 block font-medium text-ink/80">Due (optional)</span>
+              <TextInput
+                type="date"
+                value={bulkDue}
+                onChange={(e) => setBulkDue(e.target.value)}
+                className="sm:w-44"
+              />
+            </label>
+            <Button
+              icon={UsersRound}
+              onClick={() =>
+                assignBulk.mutate({
+                  collectionId: id,
+                  learnerUserIds: [...selected],
+                  dueAt: bulkDue || null,
+                })
+              }
+              disabled={selected.size === 0 || assignBulk.isPending}
+            >
+              {assignBulk.isPending
+                ? "Assigning…"
+                : `Assign to ${selected.size || ""} learner${selected.size === 1 ? "" : "s"}`}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {celebrate && (
         <Celebration

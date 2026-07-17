@@ -402,3 +402,17 @@ export async function getAssignedPaths(db: DB, organizationId: number, learnerUs
 export async function getProgression(ctx: TenantContext) {
   return getProgressionForUser(ctx.db, ctx.organizationId, ctx.userId);
 }
+
+/** Learner user-ids already assigned to a collection (to flag them in bulk-assign UIs). */
+export async function getAssignedLearnerIds(db: DB, organizationId: number, collectionId: number) {
+  const rows = await db
+    .select({ learnerUserId: pathAssignments.learnerUserId })
+    .from(pathAssignments)
+    .where(
+      and(
+        eq(pathAssignments.organizationId, organizationId),
+        eq(pathAssignments.collectionId, collectionId),
+      ),
+    );
+  return rows.map((r) => r.learnerUserId);
+}
