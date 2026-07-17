@@ -22,26 +22,37 @@ import { NotificationBell } from "./NotificationBell";
 
 type NavItem = { to: string; label: string; short: string; icon: LucideIcon };
 
+/**
+ * Strict role separation: each role only sees its own world.
+ * Admin = manage + measure. Mentor = coach + author. Learner = learn.
+ * (Personal workspaces keep the learner-style experience.)
+ */
 function useNavItems(): NavItem[] {
   const me = trpc.auth.me.useQuery();
   const role = me.data?.activeOrganization?.role;
   const inOrg = me.data?.activeOrganization?.type === "team";
-  const isMentor = role === "mentor" || role === "admin" || role === "owner";
-  const isAdmin = role === "admin" || role === "owner";
-  const isLearnerInOrg = inOrg && role === "member";
 
+  if (inOrg && (role === "admin" || role === "owner")) {
+    return [
+      { to: "/admin", label: "Admin", short: "Admin", icon: Shield },
+      { to: "/analytics", label: "Analytics", short: "Stats", icon: BarChart3 },
+    ];
+  }
+  if (inOrg && (role === "mentor" || role === "manager")) {
+    return [
+      { to: "/mentor", label: "My learners", short: "Learners", icon: Users },
+      { to: "/paths", label: "Paths", short: "Paths", icon: RouteIcon },
+      { to: "/schedule", label: "Schedule", short: "Agenda", icon: CalendarDays },
+    ];
+  }
   const items: NavItem[] = [
     { to: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard },
     { to: "/paths", label: "My Learning", short: "Learn", icon: RouteIcon },
   ];
-  if (inOrg) items.push({ to: "/schedule", label: "Schedule", short: "Agenda", icon: CalendarDays });
-  if (isMentor && inOrg)
-    items.push({ to: "/mentor", label: "My learners", short: "Learners", icon: Users });
-  if (isLearnerInOrg)
+  if (inOrg) {
+    items.push({ to: "/schedule", label: "Schedule", short: "Agenda", icon: CalendarDays });
     items.push({ to: "/mentoring", label: "Mentoring", short: "Mentor", icon: GraduationCap });
-  if (isAdmin && inOrg)
-    items.push({ to: "/analytics", label: "Analytics", short: "Stats", icon: BarChart3 });
-  if (isAdmin && inOrg) items.push({ to: "/admin", label: "Admin", short: "Admin", icon: Shield });
+  }
   return items;
 }
 

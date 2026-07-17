@@ -39,26 +39,51 @@ export default function App() {
     );
   }
 
+  // Strict role separation: each role gets only its own routes; everything
+  // else redirects to that role's home. (Servers guard the data regardless.)
+  const role = me.data.activeOrganization?.role;
+  const inTeam = me.data.activeOrganization?.type === "team";
+  const isAdmin = inTeam && (role === "admin" || role === "owner");
+  const isMentor = inTeam && (role === "mentor" || role === "manager");
+  const isLearner = !isAdmin && !isMentor; // team members + personal workspaces
+  const home = isAdmin ? "/admin" : isMentor ? "/mentor" : "/";
+
   return (
     <AppShell>
       <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/paths" component={Paths} />
-        <Route path="/paths/:id">{(params) => <PathDetail id={Number(params.id)} />}</Route>
-        <Route path="/playlists/:id">
-          {(params) => <PlaylistDetail id={Number(params.id)} />}
-        </Route>
-        <Route path="/mentor" component={MentorLearners} />
-        <Route path="/mentor/:learnerId">
-          {(params) => <LearnerProfile learnerId={Number(params.learnerId)} />}
-        </Route>
-        <Route path="/mentoring" component={Mentoring} />
-        <Route path="/schedule" component={Schedule} />
+        {/* Learner world */}
+        {isLearner && <Route path="/" component={Dashboard} />}
+        {isLearner && <Route path="/mentoring" component={Mentoring} />}
+        {isLearner && (
+          <Route path="/playlists/:id">
+            {(params) => <PlaylistDetail id={Number(params.id)} />}
+          </Route>
+        )}
+
+        {/* Learners learn on paths; mentors author them */}
+        {(isLearner || isMentor) && <Route path="/paths" component={Paths} />}
+        {(isLearner || isMentor) && (
+          <Route path="/paths/:id">{(params) => <PathDetail id={Number(params.id)} />}</Route>
+        )}
+        {(isLearner || isMentor) && <Route path="/schedule" component={Schedule} />}
+
+        {/* Mentor world (admins keep the learner-profile drill-through for oversight) */}
+        {isMentor && <Route path="/mentor" component={MentorLearners} />}
+        {(isMentor || isAdmin) && (
+          <Route path="/mentor/:learnerId">
+            {(params) => <LearnerProfile learnerId={Number(params.learnerId)} />}
+          </Route>
+        )}
+
+        {/* Admin world */}
+        {isAdmin && <Route path="/analytics" component={Analytics} />}
+        {isAdmin && <Route path="/admin" component={Admin} />}
+
+        {/* Account-level, any role */}
         <Route path="/settings" component={Settings} />
-        <Route path="/analytics" component={Analytics} />
-        <Route path="/admin" component={Admin} />
+
         <Route>
-          <Redirect to="/" />
+          <Redirect to={home} />
         </Route>
       </Switch>
     </AppShell>

@@ -77,9 +77,10 @@ export default function Paths() {
     onError: (e) => toast.error(e.message),
   });
 
-  const isTeamLearner =
-    me.data?.activeOrganization?.type === "team" &&
-    me.data?.activeOrganization?.role === "member";
+  const inTeam = me.data?.activeOrganization?.type === "team";
+  const isTeamLearner = inTeam && me.data?.activeOrganization?.role === "member";
+  // Mentors in a team workspace author paths; personal playlists live in their own space.
+  const showPlaylists = !inTeam || isTeamLearner;
 
   const rawList = (isTeamLearner ? (assigned.data ?? []) : (paths.data ?? [])).map((p) => ({
     id: p.id,
@@ -96,12 +97,16 @@ export default function Paths() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My Learning"
-        subtitle="Guided paths from your mentor, and playlists you build yourself."
+        title={showPlaylists ? "My Learning" : "Paths"}
+        subtitle={
+          showPlaylists
+            ? "Guided paths from your mentor, and playlists you build yourself."
+            : "Author the learning paths you assign to your learners."
+        }
       />
 
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-gray-200">
+      {/* Tab bar (mentors only author paths — no personal playlists here) */}
+      <div className={cn("flex gap-1 border-b border-gray-200", !showPlaylists && "hidden")}>
         {([
           { key: "paths", label: isTeamLearner ? "Assigned paths" : "Paths", icon: RouteIcon },
           { key: "playlists", label: "My Playlists", icon: ListMusic },
