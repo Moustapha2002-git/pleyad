@@ -17,3 +17,4 @@ export * as quizzesRepo from "./repositories/quizzes.repo";
 export * as analyticsRepo from "./repositories/analytics.repo";
 export * as notificationsRepo from "./repositories/notifications.repo";
 export * as invitesRepo from "./repositories/invites.repo";
+export * as directoryRepo from "./repositories/directory.repo";

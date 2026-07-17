@@ -12,6 +12,7 @@ import MentorLearners from "./pages/MentorLearners";
 import LearnerProfile from "./pages/LearnerProfile";
 import Mentoring from "./pages/Mentoring";
 import Admin from "./pages/Admin";
+import AdminLearners from "./pages/AdminLearners";
 import Analytics from "./pages/Analytics";
 import Schedule from "./pages/Schedule";
 import Settings from "./pages/Settings";
@@ -76,6 +77,7 @@ export default function App() {
         )}
 
         {/* Admin world */}
+        {isAdmin && <Route path="/learners" component={AdminLearners} />}
         {isAdmin && <Route path="/analytics" component={Analytics} />}
         {isAdmin && <Route path="/admin" component={Admin} />}
 

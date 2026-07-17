@@ -34,6 +34,7 @@ function useNavItems(): NavItem[] {
 
   if (inOrg && (role === "admin" || role === "owner")) {
     return [
+      { to: "/learners", label: "Learners", short: "Learners", icon: Users },
       { to: "/admin", label: "Admin", short: "Admin", icon: Shield },
       { to: "/analytics", label: "Analytics", short: "Stats", icon: BarChart3 },
     ];

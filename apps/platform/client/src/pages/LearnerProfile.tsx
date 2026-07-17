@@ -233,6 +233,63 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
       {/* ── Overview ─────────────────────────────────────────────────── */}
       {tab === "overview" && (
         <div className="space-y-6">
+          {/* Account facts (registration, sign-in, membership status) */}
+          <Card className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4">
+            {[
+              {
+                label: "Registered",
+                value: new Date(p.learner.registeredAt).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                }),
+              },
+              {
+                label: "Last sign-in",
+                value: p.learner.lastSignedInAt
+                  ? new Date(p.learner.lastSignedInAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "Never",
+              },
+              {
+                label: "Joined workspace",
+                value: p.learner.joinedAt
+                  ? new Date(p.learner.joinedAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "—",
+              },
+              {
+                label: "Status",
+                value:
+                  p.learner.membershipStatus === "suspended"
+                    ? "Suspended"
+                    : p.learner.membershipStatus === "active"
+                      ? "Active"
+                      : (p.learner.membershipStatus ?? "—"),
+              },
+            ].map((f) => (
+              <div key={f.label}>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-ink/40">
+                  {f.label}
+                </div>
+                <div
+                  className={
+                    f.value === "Suspended"
+                      ? "mt-0.5 text-sm font-semibold text-red-600"
+                      : "mt-0.5 text-sm font-semibold text-navy-900"
+                  }
+                >
+                  {f.value}
+                </div>
+              </div>
+            ))}
+          </Card>
+
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold">
               Progress CV

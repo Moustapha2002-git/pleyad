@@ -31,7 +31,10 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
     branding: { logoUrl: string | null; primaryColor: string | null } | null;
   } | null = null;
   if (user) {
-    const memberships = await organizationsRepo.getUserMemberships(db, user.id);
+    // Suspended memberships confer no access — resolve tenants from active ones only.
+    const memberships = (await organizationsRepo.getUserMemberships(db, user.id)).filter(
+      (m) => m.membership.status === "active",
+    );
     if (memberships.length > 0) {
       const activeOrgPublicId = cookies[ACTIVE_ORG_COOKIE];
       const chosen =

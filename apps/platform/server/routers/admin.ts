@@ -1,8 +1,19 @@
 import { randomBytes } from "node:crypto";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { db, invitesRepo, mentorshipRepo, organizationsRepo, usersRepo } from "@pleyad/db";
+import {
+  db,
+  directoryRepo,
+  invitesRepo,
+  mentorshipRepo,
+  organizationsRepo,
+  usersRepo,
+} from "@pleyad/db";
 import { hashPassword } from "../auth/password";
 import { adminProcedure, router } from "../trpc";
+
+const INACTIVE_DAYS = 7;
+const DAY_MS = 86_400_000;
 
 const ROLE = z.enum(["member", "mentor", "admin"]);
 
@@ -88,6 +99,122 @@ export const adminRouter = router({
         input.mentorUserId,
         input.learnerUserId,
       );
+      return { ok: true };
+    }),
+
+  // ── Learner directory ──────────────────────────────────────────────────
+  /**
+   * Paginated learner directory with derived stats. Aggregation is batched in
+   * the repo; filter/sort/paging run here on the computed rows (fine well past
+   * pilot scale — revisit with SQL paging beyond ~10k learners per org).
+   */
+  learners: adminProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+        status: z
+          .enum(["all", "active", "inactive", "completed", "suspended"])
+          .default("all"),
+        mentorUserId: z.number().optional(),
+        sort: z.enum(["name", "progress", "recent", "newest"]).default("name"),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(6).max(48).default(12),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rows = await directoryRepo.listLearnerDirectory(db, ctx.tenant.organizationId);
+      const now = Date.now();
+      const isActive = (r: (typeof rows)[number]) =>
+        !!r.lastActivityAt && now - r.lastActivityAt.getTime() <= INACTIVE_DAYS * DAY_MS;
+      const isCompleted = (r: (typeof rows)[number]) =>
+        r.assignedCount > 0 && r.avgProgress === 100;
+
+      const stats = {
+        total: rows.length,
+        active: rows.filter((r) => r.membershipStatus === "active" && isActive(r)).length,
+        completed: rows.filter(isCompleted).length,
+        avgProgress: rows.length
+          ? Math.round(rows.reduce((s, r) => s + r.avgProgress, 0) / rows.length)
+          : 0,
+      };
+
+      const q = input.search?.trim().toLowerCase();
+      let filtered = rows.filter((r) => {
+        if (q && !`${r.name ?? ""} ${r.email}`.toLowerCase().includes(q)) return false;
+        if (input.mentorUserId && !r.mentors.some((m) => m.id === input.mentorUserId))
+          return false;
+        switch (input.status) {
+          case "active":
+            return r.membershipStatus === "active" && isActive(r);
+          case "inactive":
+            return r.membershipStatus === "active" && !isActive(r);
+          case "completed":
+            return isCompleted(r);
+          case "suspended":
+            return r.membershipStatus === "suspended";
+          default:
+            return true;
+        }
+      });
+
+      filtered = filtered.sort((a, b) => {
+        switch (input.sort) {
+          case "progress":
+            return b.avgProgress - a.avgProgress;
+          case "recent":
+            return (b.lastActivityAt?.getTime() ?? 0) - (a.lastActivityAt?.getTime() ?? 0);
+          case "newest":
+            return b.joinedAt.getTime() - a.joinedAt.getTime();
+          default:
+            return (a.name ?? a.email).localeCompare(b.name ?? b.email);
+        }
+      });
+
+      const totalFiltered = filtered.length;
+      const start = (input.page - 1) * input.pageSize;
+      return {
+        stats,
+        totalFiltered,
+        page: input.page,
+        pageCount: Math.max(1, Math.ceil(totalFiltered / input.pageSize)),
+        rows: filtered.slice(start, start + input.pageSize),
+      };
+    }),
+
+  /** Suspend or reactivate a learner (blocks their access to this workspace). */
+  setLearnerStatus: adminProcedure
+    .input(z.object({ userId: z.number(), status: z.enum(["active", "suspended"]) }))
+    .mutation(async ({ ctx, input }) => {
+      const membership = await organizationsRepo.getMembership(
+        db,
+        input.userId,
+        ctx.tenant.organizationId,
+      );
+      if (!membership || membership.role !== "member") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only learners can be suspended" });
+      }
+      await directoryRepo.setLearnerStatus(
+        db,
+        ctx.tenant.organizationId,
+        input.userId,
+        input.status,
+      );
+      return { ok: true };
+    }),
+
+  /** Remove a learner from this workspace (their global account is untouched). */
+  removeLearner: adminProcedure
+    .input(z.object({ userId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const membership = await organizationsRepo.getMembership(
+        db,
+        input.userId,
+        ctx.tenant.organizationId,
+      );
+      if (!membership || membership.role !== "member") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only learners can be removed here" });
+      }
+      await directoryRepo.removeLearnerFromOrg(db, ctx.tenant.organizationId, input.userId);
       return { ok: true };
     }),
 
