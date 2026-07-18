@@ -467,6 +467,38 @@ export async function getProgression(ctx: TenantContext) {
   return getProgressionForUser(ctx.db, ctx.organizationId, ctx.userId);
 }
 
+/**
+ * Delete a path and its org-scoped children (assignments, dimension tags, item
+ * links). Learners' personal activity records and the shared course resources
+ * are deliberately untouched — they belong to users / the global catalog.
+ */
+export async function deletePath(db: DB, organizationId: number, collectionId: number) {
+  const rows = await db
+    .select()
+    .from(collections)
+    .where(
+      and(
+        eq(collections.id, collectionId),
+        eq(collections.organizationId, organizationId),
+        eq(collections.kind, "path"),
+      ),
+    );
+  if (!rows[0]) return { ok: false };
+
+  await db
+    .delete(pathAssignments)
+    .where(
+      and(
+        eq(pathAssignments.organizationId, organizationId),
+        eq(pathAssignments.collectionId, collectionId),
+      ),
+    );
+  await db.delete(collectionDimensions).where(eq(collectionDimensions.collectionId, collectionId));
+  await db.delete(collectionItems).where(eq(collectionItems.collectionId, collectionId));
+  await db.delete(collections).where(eq(collections.id, collectionId));
+  return { ok: true };
+}
+
 /** Learner user-ids already assigned to a collection (to flag them in bulk-assign UIs). */
 export async function getAssignedLearnerIds(db: DB, organizationId: number, collectionId: number) {
   const rows = await db

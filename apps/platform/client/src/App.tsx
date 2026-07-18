@@ -14,6 +14,7 @@ import LearnerProfile from "./pages/LearnerProfile";
 import Mentoring from "./pages/Mentoring";
 import Admin from "./pages/Admin";
 import AdminLearners from "./pages/AdminLearners";
+import AdminPaths from "./pages/AdminPaths";
 import Analytics from "./pages/Analytics";
 import Schedule from "./pages/Schedule";
 import Settings from "./pages/Settings";
@@ -73,18 +74,15 @@ export default function App() {
           </Route>
         )}
 
-        {/* Learners learn on paths; mentors author them */}
+        {/* Learners learn on paths; mentors author them; admins get the catalog */}
         {(isLearner || isMentor) && <Route path="/paths" component={Paths} />}
-        {(isLearner || isMentor) && (
-          <Route path="/paths/:id">{(params) => <PathDetail id={Number(params.id)} />}</Route>
-        )}
-        {(isLearner || isMentor) && (
-          <Route path="/paths/:id/learn/:rid">
-            {(params) => (
-              <LearnWorkspace kind="path" id={Number(params.id)} resourceId={Number(params.rid)} />
-            )}
-          </Route>
-        )}
+        {isAdmin && <Route path="/paths" component={AdminPaths} />}
+        <Route path="/paths/:id">{(params) => <PathDetail id={Number(params.id)} />}</Route>
+        <Route path="/paths/:id/learn/:rid">
+          {(params) => (
+            <LearnWorkspace kind="path" id={Number(params.id)} resourceId={Number(params.rid)} />
+          )}
+        </Route>
         {(isLearner || isMentor) && <Route path="/schedule" component={Schedule} />}
 
         {/* Mentor world (admins keep the learner-profile drill-through for oversight) */}

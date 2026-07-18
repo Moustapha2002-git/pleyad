@@ -7,6 +7,7 @@ import {
   invitesRepo,
   mentorshipRepo,
   organizationsRepo,
+  pathsRepo,
   usersRepo,
 } from "@pleyad/db";
 import { hashPassword } from "../auth/password";
@@ -215,6 +216,51 @@ export const adminRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only learners can be removed here" });
       }
       await directoryRepo.removeLearnerFromOrg(db, ctx.tenant.organizationId, input.userId);
+      return { ok: true };
+    }),
+
+  // ── Path catalog ───────────────────────────────────────────────────────
+  /** Every path with skills/enrollment/cohort progress, plus catalog stats. */
+  pathsDirectory: adminProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+        sort: z.enum(["title", "enrolled", "progress", "newest"]).default("title"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rows = await directoryRepo.listPathDirectory(db, ctx.tenant.organizationId);
+      const stats = {
+        total: rows.length,
+        totalEnrollments: rows.reduce((s, r) => s + r.enrolledCount, 0),
+        avgProgress: rows.length
+          ? Math.round(rows.reduce((s, r) => s + r.avgProgress, 0) / rows.length)
+          : 0,
+        unassigned: rows.filter((r) => r.enrolledCount === 0).length,
+      };
+      const q = input.search?.trim().toLowerCase();
+      let filtered = q ? rows.filter((r) => r.title.toLowerCase().includes(q)) : rows;
+      filtered = [...filtered].sort((a, b) => {
+        switch (input.sort) {
+          case "enrolled":
+            return b.enrolledCount - a.enrolledCount;
+          case "progress":
+            return b.avgProgress - a.avgProgress;
+          case "newest":
+            return b.createdAt.getTime() - a.createdAt.getTime();
+          default:
+            return a.title.localeCompare(b.title);
+        }
+      });
+      return { stats, rows: filtered };
+    }),
+
+  /** Delete a path (enrollments removed; learner activity + resources survive). */
+  deletePath: adminProcedure
+    .input(z.object({ collectionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const res = await pathsRepo.deletePath(db, ctx.tenant.organizationId, input.collectionId);
+      if (!res.ok) throw new TRPCError({ code: "NOT_FOUND", message: "Path not found" });
       return { ok: true };
     }),
 
