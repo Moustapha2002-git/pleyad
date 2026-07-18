@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 import type { DB } from "../client";
 import {
   collectionDimensions,
@@ -7,6 +7,7 @@ import {
   learningResources,
   memberships,
   mentorAssignments,
+  mentoringSessions,
   pathAssignments,
   userActivities,
   users,
@@ -149,6 +150,144 @@ export async function listLearnerDirectory(
   });
 }
 
+// ── Mentor directory (admin staff view) ──────────────────────────────────
+
+const INACTIVE_DAYS = 7;
+const DAY_MS = 86_400_000;
+
+export type MentorDirectoryRow = {
+  userId: number;
+  name: string | null;
+  email: string;
+  role: string;
+  joinedAt: Date;
+  lastSignedInAt: Date | null;
+  learnerCount: number;
+  avgProgress: number; // mean of mentees' path-average progress
+  atRiskCount: number;
+  completedLearners: number;
+  pathsAuthored: number;
+  upcomingSessions: number;
+  nextSessionAt: Date | null;
+};
+
+/**
+ * Every mentor with workload + cohort performance. Includes mentor/manager
+ * roles always, plus admins/owners only when they actually mentor someone.
+ * Reuses the learner directory for per-learner stats (one shared formula).
+ */
+export async function listMentorDirectory(
+  db: DB,
+  organizationId: number,
+): Promise<MentorDirectoryRow[]> {
+  const [staff, links, learners, authored, sessions] = await Promise.all([
+    db
+      .select({
+        userId: memberships.userId,
+        role: memberships.role,
+        joinedAt: memberships.createdAt,
+        name: users.name,
+        email: users.email,
+        lastSignedInAt: users.lastSignedInAt,
+      })
+      .from(memberships)
+      .innerJoin(users, eq(memberships.userId, users.id))
+      .where(
+        and(
+          eq(memberships.organizationId, organizationId),
+          inArray(memberships.role, ["mentor", "manager", "admin", "owner"]),
+        ),
+      ),
+    db
+      .select()
+      .from(mentorAssignments)
+      .where(eq(mentorAssignments.organizationId, organizationId)),
+    listLearnerDirectory(db, organizationId),
+    db
+      .select({ ownerUserId: collections.ownerUserId })
+      .from(collections)
+      .where(and(eq(collections.organizationId, organizationId), eq(collections.kind, "path"))),
+    db
+      .select({
+        mentorUserId: mentoringSessions.mentorUserId,
+        scheduledAt: mentoringSessions.scheduledAt,
+      })
+      .from(mentoringSessions)
+      .where(
+        and(
+          eq(mentoringSessions.organizationId, organizationId),
+          eq(mentoringSessions.status, "scheduled"),
+          gt(mentoringSessions.scheduledAt, new Date()),
+        ),
+      ),
+  ]);
+
+  const now = Date.now();
+  const learnerById = new Map(learners.map((l) => [l.userId, l]));
+  const menteesByMentor = new Map<number, number[]>();
+  for (const l of links) {
+    const arr = menteesByMentor.get(l.mentorUserId) ?? [];
+    arr.push(l.learnerUserId);
+    menteesByMentor.set(l.mentorUserId, arr);
+  }
+  const authoredBy = new Map<number, number>();
+  for (const a of authored) {
+    if (a.ownerUserId != null)
+      authoredBy.set(a.ownerUserId, (authoredBy.get(a.ownerUserId) ?? 0) + 1);
+  }
+  const sessionsBy = new Map<number, { count: number; next: Date | null }>();
+  for (const s of sessions) {
+    const cur = sessionsBy.get(s.mentorUserId) ?? { count: 0, next: null };
+    cur.count++;
+    const when = new Date(s.scheduledAt);
+    if (!cur.next || when < cur.next) cur.next = when;
+    sessionsBy.set(s.mentorUserId, cur);
+  }
+
+  return staff
+    .filter(
+      (m) =>
+        m.role === "mentor" ||
+        m.role === "manager" ||
+        (menteesByMentor.get(m.userId)?.length ?? 0) > 0,
+    )
+    .map((m) => {
+      const mentees = (menteesByMentor.get(m.userId) ?? [])
+        .map((id) => learnerById.get(id))
+        .filter((l): l is NonNullable<typeof l> => Boolean(l));
+      const withWork = mentees.filter((l) => l.assignedCount > 0);
+      const avgProgress = withWork.length
+        ? Math.round(withWork.reduce((s, l) => s + l.avgProgress, 0) / withWork.length)
+        : 0;
+      const atRiskCount = mentees.filter(
+        (l) =>
+          l.assignedCount > 0 &&
+          l.avgProgress < 100 &&
+          (l.avgProgress === 0 ||
+            !l.lastActivityAt ||
+            now - l.lastActivityAt.getTime() > INACTIVE_DAYS * DAY_MS),
+      ).length;
+      const sess = sessionsBy.get(m.userId);
+      return {
+        userId: m.userId,
+        name: m.name,
+        email: m.email,
+        role: m.role,
+        joinedAt: m.joinedAt,
+        lastSignedInAt: m.lastSignedInAt,
+        learnerCount: mentees.length,
+        avgProgress,
+        atRiskCount,
+        completedLearners: mentees.filter(
+          (l) => l.assignedCount > 0 && l.avgProgress === 100,
+        ).length,
+        pathsAuthored: authoredBy.get(m.userId) ?? 0,
+        upcomingSessions: sess?.count ?? 0,
+        nextSessionAt: sess?.next ?? null,
+      };
+    });
+}
+
 // ── Path directory (admin catalog view) ──────────────────────────────────
 
 export type PathDirectoryRow = {
@@ -162,6 +301,7 @@ export type PathDirectoryRow = {
   enrolledCount: number;
   avgProgress: number; // mean path-progress across enrolled learners
   completedLearners: number;
+  creatorId: number | null;
   creatorName: string | null;
   createdAt: Date;
 };
@@ -177,6 +317,7 @@ export async function listPathDirectory(
       title: collections.title,
       description: collections.description,
       createdAt: collections.createdAt,
+      creatorId: collections.ownerUserId,
       creatorName: users.name,
     })
     .from(collections)
@@ -265,6 +406,7 @@ export async function listPathDirectory(
       enrolledCount: enrolled.length,
       avgProgress: enrolled.length ? Math.round(sum / enrolled.length) : 0,
       completedLearners,
+      creatorId: p.creatorId,
       creatorName: p.creatorName,
       createdAt: p.createdAt,
     };

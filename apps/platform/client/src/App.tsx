@@ -14,6 +14,8 @@ import LearnerProfile from "./pages/LearnerProfile";
 import Mentoring from "./pages/Mentoring";
 import Admin from "./pages/Admin";
 import AdminLearners from "./pages/AdminLearners";
+import AdminMentorDetail from "./pages/AdminMentorDetail";
+import AdminMentors from "./pages/AdminMentors";
 import AdminPaths from "./pages/AdminPaths";
 import Analytics from "./pages/Analytics";
 import Schedule from "./pages/Schedule";
@@ -95,6 +97,12 @@ export default function App() {
 
         {/* Admin world */}
         {isAdmin && <Route path="/learners" component={AdminLearners} />}
+        {isAdmin && <Route path="/mentors" component={AdminMentors} />}
+        {isAdmin && (
+          <Route path="/mentors/:id">
+            {(params) => <AdminMentorDetail mentorId={Number(params.id)} />}
+          </Route>
+        )}
         {isAdmin && <Route path="/analytics" component={Analytics} />}
         {isAdmin && <Route path="/admin" component={Admin} />}
 

@@ -8,6 +8,7 @@ import {
   mentorshipRepo,
   organizationsRepo,
   pathsRepo,
+  sessionsRepo,
   usersRepo,
 } from "@pleyad/db";
 import { hashPassword } from "../auth/password";
@@ -217,6 +218,65 @@ export const adminRouter = router({
       }
       await directoryRepo.removeLearnerFromOrg(db, ctx.tenant.organizationId, input.userId);
       return { ok: true };
+    }),
+
+  // ── Mentor directory ───────────────────────────────────────────────────
+  /** Every mentor with workload + cohort performance, plus staff-level stats. */
+  mentorsDirectory: adminProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+        sort: z.enum(["name", "learners", "progress", "sessions"]).default("name"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rows = await directoryRepo.listMentorDirectory(db, ctx.tenant.organizationId);
+      const learners = await directoryRepo.listLearnerDirectory(db, ctx.tenant.organizationId);
+      const mentoredIds = new Set(
+        (await mentorshipRepo.getOrgMentorAssignments(db, ctx.tenant.organizationId)).map(
+          (a) => a.learnerUserId,
+        ),
+      );
+      const stats = {
+        mentors: rows.length,
+        mentoredLearners: mentoredIds.size,
+        unmentoredLearners: learners.filter((l) => !mentoredIds.has(l.userId)).length,
+        avgLearnersPerMentor: rows.length
+          ? Math.round((rows.reduce((s, r) => s + r.learnerCount, 0) / rows.length) * 10) / 10
+          : 0,
+      };
+      const q = input.search?.trim().toLowerCase();
+      let filtered = q
+        ? rows.filter((r) => `${r.name ?? ""} ${r.email}`.toLowerCase().includes(q))
+        : rows;
+      filtered = [...filtered].sort((a, b) => {
+        switch (input.sort) {
+          case "learners":
+            return b.learnerCount - a.learnerCount;
+          case "progress":
+            return b.avgProgress - a.avgProgress;
+          case "sessions":
+            return b.upcomingSessions - a.upcomingSessions;
+          default:
+            return (a.name ?? a.email).localeCompare(b.name ?? b.email);
+        }
+      });
+      return { stats, rows: filtered };
+    }),
+
+  /** A mentor's upcoming sessions (admin oversight view). */
+  mentorSessions: adminProcedure
+    .input(z.object({ mentorUserId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const all = await sessionsRepo.getSessionsForUser(
+        db,
+        ctx.tenant.organizationId,
+        input.mentorUserId,
+      );
+      const now = Date.now() - 30 * 60_000;
+      return all.filter(
+        (s) => s.mentorUserId === input.mentorUserId && new Date(s.scheduledAt).getTime() > now,
+      );
     }),
 
   // ── Path catalog ───────────────────────────────────────────────────────
