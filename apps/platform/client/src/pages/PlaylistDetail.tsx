@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, ExternalLink, Plus } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
 import { Celebration } from "../components/Celebration";
 import { SkillCard } from "../components/SkillCard";
@@ -11,6 +11,7 @@ const PLATFORMS = ["youtube", "coursera", "udemy", "edx", "linkedin", "other"] a
 type Platform = (typeof PLATFORMS)[number];
 
 export default function PlaylistDetail({ id }: { id: number }) {
+  const [, navigate] = useLocation();
   const playlist = trpc.playlists.get.useQuery({ id });
   const utils = trpc.useUtils();
   const toast = useToast();
@@ -86,16 +87,12 @@ export default function PlaylistDetail({ id }: { id: number }) {
             </div>
             <div className="truncate font-medium text-navy-900">{nextItem.title}</div>
           </div>
-          {nextItem.url && (
-            <a
-              href={nextItem.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-lg bg-navy-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-navy-800"
-            >
-              Open <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          )}
+          <button
+            onClick={() => navigate(`/playlists/${id}/learn/${nextItem.resourceId}`)}
+            className="inline-flex items-center gap-1 rounded-lg bg-navy-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-navy-800"
+          >
+            Start <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         </Card>
       ) : null}
 
@@ -116,6 +113,7 @@ export default function PlaylistDetail({ id }: { id: number }) {
                 item={it}
                 isNext={it.itemId === nextItem?.itemId}
                 onProgress={(progress) => setSkillProgress(it, progress)}
+                onOpen={() => navigate(`/playlists/${id}/learn/${it.resourceId}`)}
               />
             ))}
           </div>

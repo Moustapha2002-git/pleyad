@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import Paths from "./pages/Paths";
 import PathDetail from "./pages/PathDetail";
 import PlaylistDetail from "./pages/PlaylistDetail";
+import LearnWorkspace from "./pages/LearnWorkspace";
 import MentorLearners from "./pages/MentorLearners";
 import LearnerProfile from "./pages/LearnerProfile";
 import Mentoring from "./pages/Mentoring";
@@ -60,11 +61,29 @@ export default function App() {
             {(params) => <PlaylistDetail id={Number(params.id)} />}
           </Route>
         )}
+        {isLearner && (
+          <Route path="/playlists/:id/learn/:rid">
+            {(params) => (
+              <LearnWorkspace
+                kind="playlist"
+                id={Number(params.id)}
+                resourceId={Number(params.rid)}
+              />
+            )}
+          </Route>
+        )}
 
         {/* Learners learn on paths; mentors author them */}
         {(isLearner || isMentor) && <Route path="/paths" component={Paths} />}
         {(isLearner || isMentor) && (
           <Route path="/paths/:id">{(params) => <PathDetail id={Number(params.id)} />}</Route>
+        )}
+        {(isLearner || isMentor) && (
+          <Route path="/paths/:id/learn/:rid">
+            {(params) => (
+              <LearnWorkspace kind="path" id={Number(params.id)} resourceId={Number(params.rid)} />
+            )}
+          </Route>
         )}
         {(isLearner || isMentor) && <Route path="/schedule" component={Schedule} />}
 

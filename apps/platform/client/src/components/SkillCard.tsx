@@ -22,10 +22,13 @@ export function SkillCard({
   item,
   isNext,
   onProgress,
+  onOpen,
 }: {
   item: SkillItem;
   isNext: boolean;
   onProgress: (progress: number) => void;
+  /** Open the in-app learning workspace for this skill (stays on-site). */
+  onOpen?: () => void;
 }) {
   // Local value while dragging; commits on release.
   const [value, setValue] = useState(item.progress);
@@ -52,13 +55,27 @@ export function SkillCard({
             : "border-gray-200/70",
       )}
     >
-      {/* Thumbnail */}
+      {/* Thumbnail — opens the in-app workspace (falls back to the external link) */}
       <a
-        href={item.url ?? undefined}
-        target="_blank"
+        href={onOpen ? undefined : (item.url ?? undefined)}
+        target={onOpen ? undefined : "_blank"}
         rel="noreferrer"
+        role={onOpen ? "button" : undefined}
+        tabIndex={onOpen ? 0 : undefined}
+        onClick={(e) => {
+          if (onOpen) {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
+        onKeyDown={(e) => {
+          if (onOpen && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
         className={cn(
-          "group relative block aspect-video w-full overflow-hidden bg-gradient-to-br",
+          "group relative block aspect-video w-full cursor-pointer overflow-hidden bg-gradient-to-br",
           meta.tile,
         )}
       >
@@ -74,7 +91,7 @@ export function SkillCard({
             {meta.label}
           </span>
         )}
-        {item.url && (
+        {(onOpen || item.url) && (
           <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/30">
             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/60 opacity-0 transition group-hover:opacity-100">
               <Play className="h-5 w-5 text-white" fill="white" />
