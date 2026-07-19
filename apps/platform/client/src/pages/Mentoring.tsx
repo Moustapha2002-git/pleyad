@@ -193,18 +193,20 @@ export default function Mentoring() {
           </div>
         </div>
         <div className="px-5 pb-5">
-          <div className="-mt-8 flex flex-wrap items-end justify-between gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="flex items-end gap-3">
               <Avatar
                 name={mentor.name ?? mentor.email ?? "?"}
-                className="h-16 w-16 border-4 border-white text-lg shadow-[var(--shadow-card)]"
+                className="-mt-8 h-16 w-16 border-4 border-white text-lg shadow-[var(--shadow-card)]"
               />
-              <div className="pb-1">
-                <div className="text-lg font-bold text-navy-900">{mentor.name ?? mentor.email}</div>
+              <div className="pt-2">
+                <div className="text-lg font-bold leading-tight text-navy-900">
+                  {mentor.name ?? mentor.email}
+                </div>
                 {p?.headline && <div className="text-sm text-ink/55">{p.headline}</div>}
               </div>
             </div>
-            <div className="flex gap-2 pb-1">
+            <div className="flex gap-2 pt-2">
               <Button variant="secondary" icon={MessageSquare} onClick={() => setTab("messages")}>
                 Message
               </Button>
