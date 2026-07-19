@@ -2,9 +2,13 @@ import { useState } from "react";
 import {
   CalendarClock,
   Check,
+  ChevronDown,
+  ChevronRight,
   ClipboardCheck,
   GraduationCap,
+  Languages,
   ListChecks,
+  MessageSquare,
   MessageSquareQuote,
   Video,
 } from "lucide-react";
@@ -14,7 +18,16 @@ import { VideoCall } from "../components/VideoCall";
 import { MessageThread } from "../components/MessageThread";
 import { QuizTaker } from "../components/QuizTaker";
 import { callRoomName } from "../lib/room";
-import { Avatar, Button, Card, EmptyState, PageHeader, Spinner, cn } from "../components/ui";
+import {
+  Avatar,
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  ProgressBar,
+  Spinner,
+  cn,
+} from "../components/ui";
 
 const dueTime = (d: string | Date | null) => (d ? new Date(d).getTime() : Infinity);
 const isOverdue = (d: string | Date | null) => !!d && new Date(d).getTime() < Date.now();
@@ -24,11 +37,22 @@ function dueLabel(dueAt: string | Date | null) {
 }
 const sessionWhen = (d: string | Date) => {
   const x = new Date(d);
-  const day = x.toDateString() === new Date().toDateString()
-    ? "Today"
-    : x.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  const day =
+    x.toDateString() === new Date().toDateString()
+      ? "Today"
+      : x.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   return `${day} · ${x.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
 };
+
+/** "live" while in progress, "soon" within 15 min of start, else null. */
+function sessionState(s: { scheduledAt: string | Date; durationMinutes: number }) {
+  const start = new Date(s.scheduledAt).getTime();
+  const end = start + s.durationMinutes * 60_000;
+  const now = Date.now();
+  if (now >= start && now <= end) return "live" as const;
+  if (now >= start - 15 * 60_000 && now < start) return "soon" as const;
+  return null;
+}
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -51,10 +75,14 @@ export default function Mentoring() {
   const [tab, setTab] = useState<Tab>("overview");
   const [takingQuiz, setTakingQuiz] = useState<number | null>(null);
   const [inCall, setInCall] = useState(false);
+  const [showBio, setShowBio] = useState(false);
   const [selectedMentorId, setSelectedMentorId] = useState<number | null>(null);
 
   const setTaskDone = trpc.coaching.setTaskDone.useMutation({
-    onSuccess: () => utils.coaching.myTasks.invalidate(),
+    onSuccess: (_r, vars) => {
+      utils.coaching.myTasks.invalidate();
+      if (vars.done) toast.success("Task completed 🎉");
+    },
     onError: (e) => toast.error(e.message),
   });
   const ring = trpc.calls.ring.useMutation();
@@ -63,7 +91,6 @@ export default function Mentoring() {
   const orgPublicId = me.data?.activeOrganization?.publicId ?? "";
   const myId = me.data?.id ?? 0;
   const myName = me.data?.name ?? me.data?.email ?? "Learner";
-  // A learner may have more than one mentor; let them switch which one is active.
   const allMentors = mentors.data ?? [];
   const mentor = allMentors.find((m) => m.id === selectedMentorId) ?? allMentors[0];
 
@@ -80,12 +107,20 @@ export default function Mentoring() {
   const nextSession = (sessions.data ?? [])
     .filter((s) => new Date(s.scheduledAt).getTime() > Date.now() - 30 * 60000)
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0];
+  const sessState = nextSession ? sessionState(nextSession) : null;
+  const minsToStart = nextSession
+    ? Math.max(0, Math.round((new Date(nextSession.scheduledAt).getTime() - Date.now()) / 60_000))
+    : 0;
 
   const sortedTasks = [...(tasks.data ?? [])].sort((a, b) => {
     if ((a.status === "done") !== (b.status === "done")) return a.status === "done" ? 1 : -1;
     return dueTime(a.dueAt) - dueTime(b.dueAt);
   });
-  const openTaskCount = (tasks.data ?? []).filter((t) => t.status !== "done").length;
+  const doneTasks = (tasks.data ?? []).filter((t) => t.status === "done").length;
+  const totalTasks = tasks.data?.length ?? 0;
+  const openTaskCount = totalTasks - doneTasks;
+  const quizzesToTake = (quizzes.data ?? []).filter((q) => !q.taken).length;
+  const latestFeedback = feedback.data?.[0];
 
   if (mentors.isLoading) {
     return (
@@ -109,9 +144,10 @@ export default function Mentoring() {
     );
   }
 
+  const p = mentor.profile;
   const tabCount: Partial<Record<Tab, number>> = {
     tasks: openTaskCount,
-    quizzes: quizzes.data?.length ?? 0,
+    quizzes: quizzesToTake,
   };
 
   return (
@@ -121,7 +157,7 @@ export default function Mentoring() {
         subtitle={
           allMentors.length > 1
             ? `You have ${allMentors.length} mentors in this workspace.`
-            : "Your mentor in this workspace."
+            : "Your mentor, your tasks, your progress."
         }
       />
 
@@ -149,49 +185,101 @@ export default function Mentoring() {
         </div>
       )}
 
-      {/* Mentor header */}
-      <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
-        <div className="flex items-center gap-3">
-          <Avatar name={mentor.name ?? mentor.email ?? "?"} className="h-12 w-12 text-sm" />
-          <div className="min-w-0">
-            <div className="font-semibold text-navy-900">{mentor.name ?? mentor.email}</div>
-            <div className="truncate text-sm text-ink/50">
-              {mentor.profile?.headline ?? "Your mentor"}
-            </div>
-            {(mentor.profile?.expertise.length ?? 0) > 0 && (
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {mentor.profile!.expertise.slice(0, 4).map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-navy/5 px-2 py-0.5 text-[11px] font-medium text-navy/70"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
+      {/* ── Mentor hero ─────────────────────────────────────────────── */}
+      <Card className="overflow-hidden">
+        <div className="bg-navy-950 px-5 pb-12 pt-5">
+          <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/40">
+            Your mentor
           </div>
         </div>
-        <Button icon={Video} onClick={startCall}>
-          Video call
-        </Button>
+        <div className="px-5 pb-5">
+          <div className="-mt-8 flex flex-wrap items-end justify-between gap-3">
+            <div className="flex items-end gap-3">
+              <Avatar
+                name={mentor.name ?? mentor.email ?? "?"}
+                className="h-16 w-16 border-4 border-white text-lg shadow-[var(--shadow-card)]"
+              />
+              <div className="pb-1">
+                <div className="text-lg font-bold text-navy-900">{mentor.name ?? mentor.email}</div>
+                {p?.headline && <div className="text-sm text-ink/55">{p.headline}</div>}
+              </div>
+            </div>
+            <div className="flex gap-2 pb-1">
+              <Button variant="secondary" icon={MessageSquare} onClick={() => setTab("messages")}>
+                Message
+              </Button>
+              <Button icon={Video} onClick={startCall}>
+                Video call
+              </Button>
+            </div>
+          </div>
+
+          {((p?.expertise.length ?? 0) > 0 ||
+            (p?.languages.length ?? 0) > 0 ||
+            p?.availabilityNote) && (
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-ink/55">
+              {(p?.expertise.length ?? 0) > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {p!.expertise.slice(0, 5).map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-navy/5 px-2.5 py-0.5 text-xs font-medium text-navy/70"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {(p?.languages.length ?? 0) > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <Languages className="h-3.5 w-3.5" /> {p!.languages.join(" · ")}
+                </span>
+              )}
+              {p?.availabilityNote && (
+                <span className="inline-flex items-center gap-1">
+                  <CalendarClock className="h-3.5 w-3.5" /> {p.availabilityNote}
+                </span>
+              )}
+            </div>
+          )}
+
+          {p?.bio && (
+            <div className="mt-3">
+              <button
+                onClick={() => setShowBio((s) => !s)}
+                aria-expanded={showBio}
+                className="inline-flex items-center gap-1 text-xs font-medium text-navy/60 transition hover:text-navy"
+              >
+                About {mentor.name?.split(" ")[0] ?? "your mentor"}
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5 transition-transform", showBio && "rotate-180")}
+                />
+              </button>
+              {showBio && (
+                <p className="mt-2 whitespace-pre-line rounded-xl bg-gray-50 p-3 text-sm leading-relaxed text-ink/70">
+                  {p.bio}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       </Card>
 
-      {inCall && (
-        <VideoCall room={room} displayName={myName} onClose={endCall} />
-      )}
+      {inCall && <VideoCall room={room} displayName={myName} onClose={endCall} />}
 
       {/* Tab bar */}
-      <div className="flex flex-wrap gap-1 border-b border-gray-200">
+      <div className="flex flex-wrap gap-1 border-b border-gray-200" role="tablist">
         {TABS.map((t) => {
           const active = tab === t.key;
           const count = tabCount[t.key];
           return (
             <button
               key={t.key}
+              role="tab"
+              aria-selected={active}
               onClick={() => setTab(t.key)}
               className={cn(
-                "-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-sm font-medium transition",
+                "-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-navy/30",
                 active
                   ? "border-navy-900 text-navy-900"
                   : "border-transparent text-ink/55 hover:text-navy",
@@ -215,23 +303,55 @@ export default function Mentoring() {
 
       {/* ── Overview ─────────────────────────────────────────────────── */}
       {tab === "overview" && (
-        <div className="space-y-6">
-          {/* Next session */}
+        <div className="space-y-4">
+          {/* Next session with live state */}
           {nextSession ? (
-            <Card className="flex flex-wrap items-center justify-between gap-4 border-gold/30 bg-gold/[0.06] p-5">
+            <Card
+              className={cn(
+                "flex flex-wrap items-center justify-between gap-4 p-5",
+                sessState === "live"
+                  ? "border-emerald-300 bg-emerald-50"
+                  : "border-gold/30 bg-gold/[0.06]",
+              )}
+            >
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/15 text-gold">
+                <div
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-xl",
+                    sessState === "live"
+                      ? "bg-emerald-500/15 text-emerald-600"
+                      : "bg-gold/15 text-gold",
+                  )}
+                >
                   <CalendarClock className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-gold">
-                    Next session
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "text-[11px] font-semibold uppercase tracking-wide",
+                        sessState === "live" ? "text-emerald-600" : "text-gold",
+                      )}
+                    >
+                      Next session
+                    </span>
+                    {sessState === "live" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-600">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                        Live now
+                      </span>
+                    )}
+                    {sessState === "soon" && (
+                      <span className="rounded-full bg-gold/20 px-2 py-0.5 text-xs font-semibold text-gold">
+                        Starts in {minsToStart}m
+                      </span>
+                    )}
                   </div>
                   <div className="font-semibold text-navy-900">{nextSession.title}</div>
                   <div className="text-sm text-ink/55">{sessionWhen(nextSession.scheduledAt)}</div>
                 </div>
               </div>
-              <Button icon={Video} onClick={startCall}>
+              <Button icon={Video} variant={sessState ? "primary" : "secondary"} onClick={startCall}>
                 Join
               </Button>
             </Card>
@@ -241,6 +361,46 @@ export default function Mentoring() {
             </Card>
           )}
 
+          {/* To-do shortcuts */}
+          {(openTaskCount > 0 || quizzesToTake > 0) && (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setTab("tasks")}
+                className="flex items-center gap-3 rounded-2xl border border-gray-200/70 bg-white p-4 text-left shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy/10 text-navy">
+                  <ClipboardCheck className="h-5 w-5" />
+                </span>
+                <span>
+                  <span className="block text-xl font-bold leading-none text-navy-900">
+                    {openTaskCount}
+                  </span>
+                  <span className="text-xs text-ink/55">
+                    task{openTaskCount === 1 ? "" : "s"} to do
+                  </span>
+                </span>
+                <ChevronRight className="ml-auto h-4 w-4 text-ink/30" />
+              </button>
+              <button
+                onClick={() => setTab("quizzes")}
+                className="flex items-center gap-3 rounded-2xl border border-gray-200/70 bg-white p-4 text-left shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-dim-skills/10 text-dim-skills">
+                  <ListChecks className="h-5 w-5" />
+                </span>
+                <span>
+                  <span className="block text-xl font-bold leading-none text-navy-900">
+                    {quizzesToTake}
+                  </span>
+                  <span className="text-xs text-ink/55">
+                    quiz{quizzesToTake === 1 ? "" : "zes"} to take
+                  </span>
+                </span>
+                <ChevronRight className="ml-auto h-4 w-4 text-ink/30" />
+              </button>
+            </div>
+          )}
+
           {/* Feedback */}
           <Card className="p-6">
             <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
@@ -248,17 +408,32 @@ export default function Mentoring() {
             </h2>
             {feedback.data && feedback.data.length > 0 ? (
               <div className="space-y-2">
-                {feedback.data.map((f) => (
-                  <div key={f.id} className="rounded-xl border border-gray-100 p-3">
-                    <p className="text-sm text-ink">{f.body}</p>
-                    <p className="mt-1 text-xs text-ink/40">
+                {feedback.data.map((f, i) => (
+                  <div
+                    key={f.id}
+                    className={cn(
+                      "rounded-xl border p-3.5",
+                      i === 0 && f.id === latestFeedback?.id
+                        ? "border-gold/40 bg-gold/[0.06]"
+                        : "border-gray-100",
+                    )}
+                  >
+                    <p className="text-sm leading-relaxed text-ink">{f.body}</p>
+                    <p className="mt-1.5 text-xs text-ink/40">
                       {f.mentorName ?? "Mentor"} · {new Date(f.createdAt).toLocaleDateString()}
+                      {i === 0 && (
+                        <span className="ml-2 rounded-full bg-gold/15 px-1.5 py-0.5 text-[10px] font-semibold text-gold">
+                          Latest
+                        </span>
+                      )}
                     </p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-ink/50">No feedback yet.</p>
+              <p className="text-sm text-ink/50">
+                No feedback yet — it will appear here after your mentor reviews your work.
+              </p>
             )}
           </Card>
         </div>
@@ -267,24 +442,42 @@ export default function Mentoring() {
       {/* ── Tasks ────────────────────────────────────────────────────── */}
       {tab === "tasks" && (
         <Card className="p-6">
-          <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
-            <ClipboardCheck className="h-4 w-4" /> Your tasks
-          </h2>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-base font-semibold text-navy-900">
+              <ClipboardCheck className="h-4 w-4" /> Your tasks
+            </h2>
+            {totalTasks > 0 && (
+              <div className="flex items-center gap-2">
+                <ProgressBar
+                  value={totalTasks ? (doneTasks / totalTasks) * 100 : 0}
+                  className="w-24"
+                  barClassName={doneTasks === totalTasks ? "bg-emerald-500" : undefined}
+                />
+                <span className="text-xs font-semibold text-ink/55">
+                  {doneTasks}/{totalTasks}
+                </span>
+              </div>
+            )}
+          </div>
           {sortedTasks.length > 0 ? (
             <ul className="space-y-2">
               {sortedTasks.map((t) => (
                 <li
                   key={t.id}
-                  className="flex items-start gap-3 rounded-xl border border-gray-100 p-3"
+                  className={cn(
+                    "flex items-start gap-3 rounded-xl border p-3 transition",
+                    t.status === "done" ? "border-gray-100 opacity-70" : "border-gray-100",
+                  )}
                 >
                   <button
                     onClick={() => setTaskDone.mutate({ taskId: t.id, done: t.status !== "done" })}
-                    className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition ${
+                    aria-label={t.status === "done" ? "Mark not done" : "Mark done"}
+                    className={cn(
+                      "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition",
                       t.status === "done"
-                        ? "border-navy-900 bg-navy-900 text-white"
-                        : "border-gray-300 text-transparent hover:border-navy/50"
-                    }`}
-                    aria-label="Toggle done"
+                        ? "border-emerald-500 bg-emerald-500 text-white"
+                        : "border-gray-300 text-transparent hover:border-navy/50",
+                    )}
                   >
                     <Check className="h-4 w-4" />
                   </button>
@@ -301,9 +494,12 @@ export default function Mentoring() {
                       </span>
                       {t.status !== "done" && dueLabel(t.dueAt) && (
                         <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                            isOverdue(t.dueAt) ? "bg-red-500/12 text-red-600" : "bg-gold/15 text-gold"
-                          }`}
+                          className={cn(
+                            "rounded-full px-2 py-0.5 text-xs font-medium",
+                            isOverdue(t.dueAt)
+                              ? "bg-red-500/12 text-red-600"
+                              : "bg-gold/15 text-gold",
+                          )}
                         >
                           {isOverdue(t.dueAt) ? "Overdue" : `Due ${dueLabel(t.dueAt)}`}
                         </span>
@@ -315,7 +511,7 @@ export default function Mentoring() {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-ink/50">No tasks yet.</p>
+            <p className="text-sm text-ink/50">No tasks yet — your mentor will add some.</p>
           )}
         </Card>
       )}
@@ -339,21 +535,41 @@ export default function Mentoring() {
               {quizzes.data.map((q) => (
                 <div
                   key={q.id}
-                  className="flex items-center gap-3 rounded-xl border border-gray-100 p-3"
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl border p-3",
+                    q.taken ? "border-gray-100" : "border-gold/40 bg-gold/[0.05]",
+                  )}
                 >
                   <div className="min-w-0 flex-1">
-                    <span className="font-medium text-navy-900">{q.title}</span>
-                    <span className="ml-2 text-sm text-ink/50">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-navy-900">{q.title}</span>
+                      {!q.taken && (
+                        <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[11px] font-semibold text-gold">
+                          New
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-ink/50">
                       {q.questionCount} question{q.questionCount === 1 ? "" : "s"}
                     </span>
                   </div>
                   {q.taken && (
-                    <span className="rounded-full bg-dim-skills/10 px-2 py-0.5 text-xs font-medium text-dim-skills">
-                      Score {q.score}%
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-xs font-semibold",
+                        (q.score ?? 0) >= 70
+                          ? "bg-emerald-500/12 text-emerald-600"
+                          : "bg-amber-500/15 text-amber-600",
+                      )}
+                    >
+                      {q.score}%
                     </span>
                   )}
-                  <Button variant="secondary" onClick={() => setTakingQuiz(q.id)}>
-                    {q.taken ? "Retake" : "Take"}
+                  <Button
+                    variant={q.taken ? "secondary" : "primary"}
+                    onClick={() => setTakingQuiz(q.id)}
+                  >
+                    {q.taken ? "Retake" : "Take quiz"}
                   </Button>
                 </div>
               ))}
@@ -366,7 +582,10 @@ export default function Mentoring() {
 
       {/* ── Messages ─────────────────────────────────────────────────── */}
       {tab === "messages" && (
-        <MessageThread withUserId={mentor.id} title={`Messages with ${mentor.name ?? "your mentor"}`} />
+        <MessageThread
+          withUserId={mentor.id}
+          title={`Messages with ${mentor.name ?? "your mentor"}`}
+        />
       )}
     </div>
   );
