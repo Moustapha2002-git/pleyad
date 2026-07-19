@@ -54,6 +54,13 @@ export const users = mysqlTable("users", {
   passwordHash: varchar("password_hash", { length: 255 }),
   emailVerifiedAt: timestamp("email_verified_at"),
   avatarUrl: text("avatar_url"),
+
+  // ── Mentor profile (self-edited in Settings; shown wherever they mentor).
+  headline: varchar("headline", { length: 160 }),
+  bio: text("bio"),
+  expertiseJson: text("expertise_json"), // JSON string[] of expertise tags
+  languagesJson: text("languages_json"), // JSON string[] of spoken languages
+  availabilityNote: varchar("availability_note", { length: 200 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
   lastSignedInAt: timestamp("last_signed_in_at"),

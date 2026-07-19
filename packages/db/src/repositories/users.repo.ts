@@ -47,3 +47,63 @@ export async function updateProfile(
 export async function setPassword(db: DB, id: number, passwordHash: string) {
   await db.update(users).set({ passwordHash }).where(eq(users.id, id));
 }
+
+// ── Mentor profile (headline/bio/expertise/languages/availability) ───────
+
+export type MentorProfile = {
+  headline: string | null;
+  bio: string | null;
+  expertise: string[];
+  languages: string[];
+  availabilityNote: string | null;
+};
+
+function parseTags(json: string | null): string[] {
+  if (!json) return [];
+  try {
+    const v = JSON.parse(json);
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Profile fields from a users row (JSON columns parsed). */
+export function toMentorProfile(u: {
+  headline: string | null;
+  bio: string | null;
+  expertiseJson: string | null;
+  languagesJson: string | null;
+  availabilityNote: string | null;
+}): MentorProfile {
+  return {
+    headline: u.headline,
+    bio: u.bio,
+    expertise: parseTags(u.expertiseJson),
+    languages: parseTags(u.languagesJson),
+    availabilityNote: u.availabilityNote,
+  };
+}
+
+export async function updateMentorProfile(
+  db: DB,
+  id: number,
+  input: {
+    headline: string | null;
+    bio: string | null;
+    expertise: string[];
+    languages: string[];
+    availabilityNote: string | null;
+  },
+) {
+  await db
+    .update(users)
+    .set({
+      headline: input.headline,
+      bio: input.bio,
+      expertiseJson: JSON.stringify(input.expertise),
+      languagesJson: JSON.stringify(input.languages),
+      availabilityNote: input.availabilityNote,
+    })
+    .where(eq(users.id, id));
+}

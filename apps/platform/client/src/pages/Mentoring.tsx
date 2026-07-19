@@ -153,9 +153,23 @@ export default function Mentoring() {
       <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div className="flex items-center gap-3">
           <Avatar name={mentor.name ?? mentor.email ?? "?"} className="h-12 w-12 text-sm" />
-          <div>
+          <div className="min-w-0">
             <div className="font-semibold text-navy-900">{mentor.name ?? mentor.email}</div>
-            <div className="text-sm text-ink/50">Your mentor</div>
+            <div className="truncate text-sm text-ink/50">
+              {mentor.profile?.headline ?? "Your mentor"}
+            </div>
+            {(mentor.profile?.expertise.length ?? 0) > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {mentor.profile!.expertise.slice(0, 4).map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-navy/5 px-2 py-0.5 text-[11px] font-medium text-navy/70"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <Button icon={Video} onClick={startCall}>

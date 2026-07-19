@@ -1,9 +1,18 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { KeyRound, Languages, UserCog } from "lucide-react";
+import { GraduationCap, KeyRound, Languages, UserCog } from "lucide-react";
 import { trpc } from "../lib/trpc";
 import { useToast } from "../components/Toast";
-import { Avatar, Button, Card, PageHeader, Select, Spinner, TextInput } from "../components/ui";
+import {
+  Avatar,
+  Button,
+  Card,
+  PageHeader,
+  Select,
+  Spinner,
+  Textarea,
+  TextInput,
+} from "../components/ui";
 
 /** A labelled form row that wraps arbitrary controls (unlike ui/Field, which owns its input). */
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
@@ -27,10 +36,41 @@ export default function Settings() {
   const [confirm, setConfirm] = useState("");
   const [lang, setLang] = useState(() => localStorage.getItem("pleyad_lang") ?? "en");
 
-  // Seed the name field once the profile loads.
+  // Mentor profile (self-edited; shown wherever the user mentors)
+  const [headline, setHeadline] = useState("");
+  const [bio, setBio] = useState("");
+  const [expertise, setExpertise] = useState("");
+  const [languages, setLanguages] = useState("");
+  const [availability, setAvailability] = useState("");
+  const [mpDirty, setMpDirty] = useState(false);
+
+  // Seed the fields once the profile loads.
   useEffect(() => {
-    if (me.data?.name) setName(me.data.name);
-  }, [me.data?.name]);
+    if (!me.data) return;
+    if (me.data.name) setName(me.data.name);
+    const p = me.data.profile;
+    setHeadline(p.headline ?? "");
+    setBio(p.bio ?? "");
+    setExpertise(p.expertise.join(", "));
+    setLanguages(p.languages.join(", "));
+    setAvailability(p.availabilityNote ?? "");
+    setMpDirty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me.data?.id, me.data?.name]);
+
+  const updateMentorProfile = trpc.auth.updateMentorProfile.useMutation({
+    onSuccess: async () => {
+      await utils.auth.me.invalidate();
+      setMpDirty(false);
+      toast.success("Mentor profile saved");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const splitTags = (s: string) =>
+    s
+      .split(/[,;]/)
+      .map((t) => t.trim())
+      .filter(Boolean);
 
   const updateProfile = trpc.auth.updateProfile.useMutation({
     onSuccess: async () => {
@@ -84,6 +124,89 @@ export default function Settings() {
           </Button>
         </form>
       </Card>
+
+      {/* Mentor profile — shown for mentoring staff */}
+      {["mentor", "manager", "admin", "owner"].includes(
+        me.data.activeOrganization?.role ?? "",
+      ) && (
+        <Card className="p-6">
+          <h2 className="mb-1 flex items-center gap-2 text-base font-semibold text-navy-900">
+            <GraduationCap className="h-4 w-4" /> Mentor profile
+          </h2>
+          <p className="mb-4 text-sm text-ink/55">
+            Learners and admins see this wherever you mentor — keep it short and real.
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              updateMentorProfile.mutate({
+                headline: headline || null,
+                bio: bio || null,
+                expertise: splitTags(expertise),
+                languages: splitTags(languages),
+                availabilityNote: availability || null,
+              });
+            }}
+            className="space-y-4"
+          >
+            <Row label="Headline" hint="One line, e.g. “Full-stack developer & career coach”.">
+              <TextInput
+                value={headline}
+                maxLength={160}
+                onChange={(e) => {
+                  setHeadline(e.target.value);
+                  setMpDirty(true);
+                }}
+              />
+            </Row>
+            <Row label="Bio">
+              <Textarea
+                value={bio}
+                rows={4}
+                maxLength={2000}
+                onChange={(e) => {
+                  setBio(e.target.value);
+                  setMpDirty(true);
+                }}
+                placeholder="Your experience, what you help with, how you work…"
+              />
+            </Row>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Row label="Expertise" hint="Comma-separated, e.g. Python, UX, Entrepreneurship.">
+                <TextInput
+                  value={expertise}
+                  onChange={(e) => {
+                    setExpertise(e.target.value);
+                    setMpDirty(true);
+                  }}
+                />
+              </Row>
+              <Row label="Languages" hint="e.g. Français, العربية, English.">
+                <TextInput
+                  value={languages}
+                  onChange={(e) => {
+                    setLanguages(e.target.value);
+                    setMpDirty(true);
+                  }}
+                />
+              </Row>
+            </div>
+            <Row label="Availability" hint="e.g. “Mon–Wed evenings, Sat mornings”.">
+              <TextInput
+                value={availability}
+                maxLength={200}
+                onChange={(e) => {
+                  setAvailability(e.target.value);
+                  setMpDirty(true);
+                }}
+              />
+            </Row>
+            <Button type="submit" disabled={!mpDirty || updateMentorProfile.isPending}>
+              {updateMentorProfile.isPending ? "Saving…" : "Save mentor profile"}
+            </Button>
+          </form>
+        </Card>
+      )}
 
       {/* Security */}
       <Card className="p-6">

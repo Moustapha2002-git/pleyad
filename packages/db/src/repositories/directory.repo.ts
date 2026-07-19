@@ -12,6 +12,8 @@ import {
   userActivities,
   users,
 } from "../schema";
+import { toMentorProfile } from "./users.repo";
+import type { MentorProfile } from "./users.repo";
 
 /**
  * Admin learner directory. One batched query set (no per-learner loops) so it
@@ -160,6 +162,7 @@ export type MentorDirectoryRow = {
   name: string | null;
   email: string;
   role: string;
+  profile: MentorProfile;
   joinedAt: Date;
   lastSignedInAt: Date | null;
   learnerCount: number;
@@ -189,6 +192,11 @@ export async function listMentorDirectory(
         name: users.name,
         email: users.email,
         lastSignedInAt: users.lastSignedInAt,
+        headline: users.headline,
+        bio: users.bio,
+        expertiseJson: users.expertiseJson,
+        languagesJson: users.languagesJson,
+        availabilityNote: users.availabilityNote,
       })
       .from(memberships)
       .innerJoin(users, eq(memberships.userId, users.id))
@@ -273,6 +281,7 @@ export async function listMentorDirectory(
         name: m.name,
         email: m.email,
         role: m.role,
+        profile: toMentorProfile(m),
         joinedAt: m.joinedAt,
         lastSignedInAt: m.lastSignedInAt,
         learnerCount: mentees.length,

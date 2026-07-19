@@ -15,6 +15,7 @@ export const authRouter = router({
       publicId: ctx.user.publicId,
       email: ctx.user.email,
       name: ctx.user.name,
+      profile: usersRepo.toMentorProfile(ctx.user),
       activeOrganization: ctx.tenant
         ? {
             id: ctx.tenant.organizationId,
@@ -99,6 +100,28 @@ export const authRouter = router({
     .input(z.object({ name: z.string().min(2, "Name must be at least 2 characters") }))
     .mutation(async ({ ctx, input }) => {
       await usersRepo.updateProfile(db, ctx.user.id, { name: input.name.trim() });
+      return { success: true };
+    }),
+
+  /** Self-edited mentor profile: headline, bio, expertise, languages, availability. */
+  updateMentorProfile: protectedProcedure
+    .input(
+      z.object({
+        headline: z.string().max(160).nullable(),
+        bio: z.string().max(2000).nullable(),
+        expertise: z.array(z.string().min(1).max(40)).max(10),
+        languages: z.array(z.string().min(1).max(30)).max(8),
+        availabilityNote: z.string().max(200).nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await usersRepo.updateMentorProfile(db, ctx.user.id, {
+        headline: input.headline?.trim() || null,
+        bio: input.bio?.trim() || null,
+        expertise: input.expertise.map((e) => e.trim()).filter(Boolean),
+        languages: input.languages.map((l) => l.trim()).filter(Boolean),
+        availabilityNote: input.availabilityNote?.trim() || null,
+      });
       return { success: true };
     }),
 

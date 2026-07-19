@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import type { DB } from "../client";
 import { mentorAssignments, users } from "../schema";
+import { toMentorProfile } from "./users.repo";
 
 /**
  * Mentor ↔ learner assignments, scoped to an organization. Reads take an explicit
@@ -53,18 +54,23 @@ export async function getLearnersForMentor(
     );
 }
 
-/** Mentors assigned to a learner in an organization (learner-facing). */
+/** Mentors assigned to a learner in an organization (learner-facing, with profile). */
 export async function getMentorsForLearner(
   db: DB,
   organizationId: number,
   learnerUserId: number,
 ) {
-  return db
+  const rows = await db
     .select({
       id: users.id,
       publicId: users.publicId,
       name: users.name,
       email: users.email,
+      headline: users.headline,
+      bio: users.bio,
+      expertiseJson: users.expertiseJson,
+      languagesJson: users.languagesJson,
+      availabilityNote: users.availabilityNote,
     })
     .from(mentorAssignments)
     .innerJoin(users, eq(mentorAssignments.mentorUserId, users.id))
@@ -74,6 +80,13 @@ export async function getMentorsForLearner(
         eq(mentorAssignments.learnerUserId, learnerUserId),
       ),
     );
+  return rows.map((r) => ({
+    id: r.id,
+    publicId: r.publicId,
+    name: r.name,
+    email: r.email,
+    profile: toMentorProfile(r),
+  }));
 }
 
 /** All mentor↔learner assignments in an organization (for the admin console). */

@@ -146,10 +146,30 @@ export default function AdminMentors() {
                       </span>
                       <Badge>{ROLE_LABEL[m.role] ?? m.role}</Badge>
                     </div>
-                    <div className="truncate text-xs text-ink/50">{m.email}</div>
+                    <div className="truncate text-xs text-ink/50">
+                      {m.profile.headline ?? m.email}
+                    </div>
                   </div>
                   <ChevronRight className="h-5 w-5 shrink-0 text-ink/30" />
                 </div>
+
+                {m.profile.expertise.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {m.profile.expertise.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-navy/5 px-2 py-0.5 text-[11px] font-medium text-navy/70"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {m.profile.expertise.length > 3 && (
+                      <span className="text-[11px] text-ink/40">
+                        +{m.profile.expertise.length - 3}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-xl bg-gray-50 py-2">

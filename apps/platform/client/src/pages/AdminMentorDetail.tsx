@@ -100,7 +100,7 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
         <Avatar name={name} className="h-14 w-14 text-base" />
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold tracking-tight text-navy-900">{name}</h1>
-          <p className="text-ink/50">{mentor.email}</p>
+          <p className="text-ink/50">{mentor.profile.headline ?? mentor.email}</p>
         </div>
         <Badge className="bg-gold/15 text-gold">
           {mentor.role === "mentor" ? "Mentor" : mentor.role}
@@ -131,6 +131,71 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
       {/* ── Overview ─────────────────────────────────────────────────── */}
       {tab === "overview" && (
         <div className="space-y-6">
+          {/* About (self-edited by the mentor in Settings) */}
+          {(mentor.profile.bio ||
+            mentor.profile.expertise.length > 0 ||
+            mentor.profile.languages.length > 0 ||
+            mentor.profile.availabilityNote) && (
+            <Card className="space-y-4 p-6">
+              {mentor.profile.bio && (
+                <div>
+                  <h2 className="mb-1 text-sm font-semibold text-navy-900">About</h2>
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-ink/70">
+                    {mentor.profile.bio}
+                  </p>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-x-8 gap-y-3">
+                {mentor.profile.expertise.length > 0 && (
+                  <div>
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/40">
+                      Expertise
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {mentor.profile.expertise.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full bg-navy/5 px-2.5 py-0.5 text-xs font-medium text-navy/70"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {mentor.profile.languages.length > 0 && (
+                  <div>
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/40">
+                      Languages
+                    </div>
+                    <div className="text-sm text-ink/70">
+                      {mentor.profile.languages.join(" · ")}
+                    </div>
+                  </div>
+                )}
+                {mentor.profile.availabilityNote && (
+                  <div>
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/40">
+                      Availability
+                    </div>
+                    <div className="text-sm text-ink/70">{mentor.profile.availabilityNote}</div>
+                  </div>
+                )}
+                <div>
+                  <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/40">
+                    Contact
+                  </div>
+                  <a
+                    href={`mailto:${mentor.email}`}
+                    className="text-sm font-medium text-navy underline-offset-2 hover:underline"
+                  >
+                    {mentor.email}
+                  </a>
+                </div>
+              </div>
+            </Card>
+          )}
+
           <Card className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4">
             {[
               { label: "Joined workspace", value: fmtDate(mentor.joinedAt) },
@@ -194,8 +259,7 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
               </Card>
             </div>
             <p className="mt-2 text-xs text-ink/40">
-              Derived live from learner activity — mentor bios, expertise and ratings arrive with
-              mentor profiles.
+              Derived live from learner activity. Learner ratings are a future, separate feature.
             </p>
           </section>
         </div>
