@@ -83,8 +83,16 @@ export async function listPathsForUser(db: DB, organizationId: number, userId: n
     .from(collectionDimensions)
     .where(inArray(collectionDimensions.collectionId, pathIds));
   const items = await db
-    .select()
+    .select({
+      collectionId: collectionItems.collectionId,
+      resourceId: collectionItems.resourceId,
+      position: collectionItems.position,
+      title: learningResources.title,
+      url: learningResources.url,
+      thumbnailUrl: learningResources.thumbnailUrl,
+    })
     .from(collectionItems)
+    .innerJoin(learningResources, eq(collectionItems.resourceId, learningResources.id))
     .where(inArray(collectionItems.collectionId, pathIds));
 
   const resourceIds = items.map((i) => i.resourceId);
@@ -97,13 +105,21 @@ export async function listPathsForUser(db: DB, organizationId: number, userId: n
         )
     : [];
   const prog = progressMap(acts);
+  const lastActByResource = new Map<number, number>();
+  for (const a of acts) {
+    if (a.lastActivityAt) lastActByResource.set(a.resourceId, new Date(a.lastActivityAt).getTime());
+  }
 
   return paths.map((p) => {
-    const pItems = items.filter((i) => i.collectionId === p.id);
+    const pItems = items
+      .filter((i) => i.collectionId === p.id)
+      .sort((a, b) => a.position - b.position);
     const stats = pathStats(
       pItems.map((i) => i.resourceId),
       prog,
     );
+    const next = pItems.find((i) => (prog.get(i.resourceId) ?? 0) < 100);
+    const lastTs = Math.max(0, ...pItems.map((i) => lastActByResource.get(i.resourceId) ?? 0));
     return {
       id: p.id,
       publicId: p.publicId,
@@ -113,6 +129,11 @@ export async function listPathsForUser(db: DB, organizationId: number, userId: n
       itemCount: stats.total,
       completedCount: stats.completed,
       progress: stats.progress,
+      nextSkill: next ? { resourceId: next.resourceId, title: next.title } : null,
+      previewSkills: pItems
+        .slice(0, 3)
+        .map((i) => ({ title: i.title, url: i.url, thumbnailUrl: i.thumbnailUrl })),
+      lastActivityAt: lastTs > 0 ? new Date(lastTs) : null,
     };
   });
 }
@@ -140,8 +161,16 @@ export async function listPlaylistsForOwner(db: DB, organizationId: number, user
 
   const ids = rows.map((p) => p.id);
   const items = await db
-    .select()
+    .select({
+      collectionId: collectionItems.collectionId,
+      resourceId: collectionItems.resourceId,
+      position: collectionItems.position,
+      title: learningResources.title,
+      url: learningResources.url,
+      thumbnailUrl: learningResources.thumbnailUrl,
+    })
     .from(collectionItems)
+    .innerJoin(learningResources, eq(collectionItems.resourceId, learningResources.id))
     .where(inArray(collectionItems.collectionId, ids));
   const resourceIds = items.map((i) => i.resourceId);
   const acts = resourceIds.length
@@ -153,13 +182,21 @@ export async function listPlaylistsForOwner(db: DB, organizationId: number, user
         )
     : [];
   const prog = progressMap(acts);
+  const lastActByResource = new Map<number, number>();
+  for (const a of acts) {
+    if (a.lastActivityAt) lastActByResource.set(a.resourceId, new Date(a.lastActivityAt).getTime());
+  }
 
   return rows.map((p) => {
-    const pItems = items.filter((i) => i.collectionId === p.id);
+    const pItems = items
+      .filter((i) => i.collectionId === p.id)
+      .sort((a, b) => a.position - b.position);
     const stats = pathStats(
       pItems.map((i) => i.resourceId),
       prog,
     );
+    const next = pItems.find((i) => (prog.get(i.resourceId) ?? 0) < 100);
+    const lastTs = Math.max(0, ...pItems.map((i) => lastActByResource.get(i.resourceId) ?? 0));
     return {
       id: p.id,
       publicId: p.publicId,
@@ -168,6 +205,11 @@ export async function listPlaylistsForOwner(db: DB, organizationId: number, user
       itemCount: stats.total,
       completedCount: stats.completed,
       progress: stats.progress,
+      nextSkill: next ? { resourceId: next.resourceId, title: next.title } : null,
+      previewSkills: pItems
+        .slice(0, 3)
+        .map((i) => ({ title: i.title, url: i.url, thumbnailUrl: i.thumbnailUrl })),
+      lastActivityAt: lastTs > 0 ? new Date(lastTs) : null,
     };
   });
 }
@@ -426,8 +468,16 @@ export async function getAssignedPaths(db: DB, organizationId: number, learnerUs
     .from(collectionDimensions)
     .where(inArray(collectionDimensions.collectionId, collectionIds));
   const items = await db
-    .select()
+    .select({
+      collectionId: collectionItems.collectionId,
+      resourceId: collectionItems.resourceId,
+      position: collectionItems.position,
+      title: learningResources.title,
+      url: learningResources.url,
+      thumbnailUrl: learningResources.thumbnailUrl,
+    })
     .from(collectionItems)
+    .innerJoin(learningResources, eq(collectionItems.resourceId, learningResources.id))
     .where(inArray(collectionItems.collectionId, collectionIds));
   const resourceIds = items.map((i) => i.resourceId);
   const acts = resourceIds.length
@@ -442,13 +492,21 @@ export async function getAssignedPaths(db: DB, organizationId: number, learnerUs
         )
     : [];
   const prog = progressMap(acts);
+  const lastActByResource = new Map<number, number>();
+  for (const a of acts) {
+    if (a.lastActivityAt) lastActByResource.set(a.resourceId, new Date(a.lastActivityAt).getTime());
+  }
 
   return paths.map((p) => {
-    const pItems = items.filter((i) => i.collectionId === p.id);
+    const pItems = items
+      .filter((i) => i.collectionId === p.id)
+      .sort((a, b) => a.position - b.position);
     const stats = pathStats(
       pItems.map((i) => i.resourceId),
       prog,
     );
+    const next = pItems.find((i) => (prog.get(i.resourceId) ?? 0) < 100);
+    const lastTs = Math.max(0, ...pItems.map((i) => lastActByResource.get(i.resourceId) ?? 0));
     return {
       id: p.id,
       publicId: p.publicId,
@@ -459,6 +517,11 @@ export async function getAssignedPaths(db: DB, organizationId: number, learnerUs
       completedCount: stats.completed,
       progress: stats.progress,
       dueAt: dueByCollection.get(p.id) ?? null,
+      nextSkill: next ? { resourceId: next.resourceId, title: next.title } : null,
+      previewSkills: pItems
+        .slice(0, 3)
+        .map((i) => ({ title: i.title, url: i.url, thumbnailUrl: i.thumbnailUrl })),
+      lastActivityAt: lastTs > 0 ? new Date(lastTs) : null,
     };
   });
 }
