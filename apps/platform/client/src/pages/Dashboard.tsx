@@ -1,8 +1,11 @@
 import {
   ArrowRight,
+  ChevronRight,
   ClipboardCheck,
   CalendarClock,
+  GraduationCap,
   ListMusic,
+  Play,
   Plus,
   Route as RouteIcon,
   Sparkles,
@@ -13,13 +16,25 @@ import { trpc } from "../lib/trpc";
 import { DimensionGauges } from "../components/DimensionGauges";
 import { GettingStarted } from "../components/GettingStarted";
 import { SessionList } from "../components/SessionList";
-import { Button, Card, EmptyState, ProgressBar, Spinner } from "../components/ui";
+import { thumbnailFor } from "../lib/thumbnails";
+import { Avatar, Button, Card, EmptyState, ProgressBar, Spinner, cn } from "../components/ui";
 
 const isToday = (d: string | Date) => new Date(d).toDateString() === new Date().toDateString();
 const dueTime = (d: string | Date | null) => (d ? new Date(d).getTime() : Infinity);
 const dueLabel = (d: string | Date | null) =>
   d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
 const isOverdue = (d: string | Date | null) => !!d && new Date(d).getTime() < Date.now();
+
+type Learnable = {
+  id: number;
+  title: string;
+  progress: number;
+  itemCount: number;
+  completedCount: number;
+  dueAt?: string | Date | null;
+  nextSkill?: { resourceId: number; title: string } | null;
+  previewSkills?: { title: string; url: string | null; thumbnailUrl: string | null }[];
+};
 
 function Stat({ icon: Icon, value, label, to }: { icon: LucideIcon; value: number; label: string; to: string }) {
   return (
@@ -35,6 +50,79 @@ function Stat({ icon: Icon, value, label, to }: { icon: LucideIcon; value: numbe
   );
 }
 
+/** Compact row with a real cover thumb — the Home-sized version of a path card. */
+function LearnRow({
+  p,
+  detailTo,
+  continueTo,
+}: {
+  p: Learnable;
+  detailTo: string;
+  continueTo: string | null;
+}) {
+  const first = p.previewSkills?.[0];
+  const thumb = first ? thumbnailFor(first.url, first.thumbnailUrl) : null;
+  const done = p.itemCount > 0 && p.progress >= 100;
+  return (
+    <Link to={continueTo ?? detailTo}>
+      <Card className="flex items-center gap-3 p-3 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]">
+        <span className="relative block h-14 w-24 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-navy-800 to-navy-950">
+          {thumb ? (
+            <img src={thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center px-1 text-center text-[8px] font-semibold uppercase tracking-wide text-white/50">
+              {p.title.slice(0, 16)}
+            </span>
+          )}
+          <span className="absolute inset-x-0 bottom-0 h-0.5 bg-black/40">
+            <span
+              className={cn("block h-full", done ? "bg-emerald-400" : "bg-gold")}
+              style={{ width: `${p.progress}%` }}
+            />
+          </span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className="truncate font-semibold text-navy-900">{p.title}</span>
+            {done ? (
+              <span className="shrink-0 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] font-medium text-emerald-600">
+                Completed
+              </span>
+            ) : (
+              dueLabel(p.dueAt ?? null) && (
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
+                    isOverdue(p.dueAt ?? null)
+                      ? "bg-red-500/12 text-red-600"
+                      : "bg-gold/15 text-gold",
+                  )}
+                >
+                  {isOverdue(p.dueAt ?? null) ? "Overdue" : `Due ${dueLabel(p.dueAt ?? null)}`}
+                </span>
+              )
+            )}
+          </span>
+          <span className="mt-1 flex items-center gap-2">
+            <ProgressBar
+              value={p.progress}
+              className="max-w-40 flex-1"
+              barClassName={done ? "bg-emerald-500" : undefined}
+            />
+            <span className="text-xs font-semibold text-ink/55">{p.progress}%</span>
+          </span>
+          {p.nextSkill && !done && (
+            <span className="mt-0.5 block truncate text-xs text-ink/45">
+              Next: {p.nextSkill.title}
+            </span>
+          )}
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-ink/30" />
+      </Card>
+    </Link>
+  );
+}
+
 export default function Dashboard() {
   const me = trpc.auth.me.useQuery();
   const progression = trpc.paths.progression.useQuery();
@@ -43,6 +131,7 @@ export default function Dashboard() {
   const sessions = trpc.sessions.mine.useQuery();
   const tasks = trpc.coaching.myTasks.useQuery();
   const playlists = trpc.playlists.mine.useQuery();
+  const mentors = trpc.mentor.myMentors.useQuery();
   const setupDemo = trpc.dev.setupMentorDemo.useMutation({
     onSuccess: () => window.location.assign("/mentor"),
   });
@@ -50,29 +139,26 @@ export default function Dashboard() {
   const firstName = me.data?.name?.split(" ")[0] ?? "there";
   const isTeam = me.data?.activeOrganization?.type === "team";
   const isPersonal = !isTeam;
+  const mentor = mentors.data?.[0];
 
   const own = (paths.data ?? []).filter((p) => p.itemCount > 0);
-  const learnerPaths = (isTeam ? (assigned.data ?? []) : own).map((p) => ({
-    id: p.id,
-    title: p.title,
-    progress: p.progress,
-    itemCount: p.itemCount,
-    dueAt: (p as { dueAt?: string | Date | null }).dueAt ?? null,
-  }));
+  const learnerPaths: Learnable[] = isTeam ? (assigned.data ?? []) : own;
 
-  // Pick a path to resume: in-progress first (soonest due), else a not-started one.
-  const inProgress = learnerPaths.filter((p) => p.progress > 0 && p.progress < 100);
-  const notStarted = learnerPaths.filter((p) => p.progress === 0 && p.itemCount > 0);
-  const continuePath =
-    [...inProgress].sort(
-      (a, b) => dueTime(a.dueAt) - dueTime(b.dueAt) || b.progress - a.progress,
-    )[0] ?? notStarted[0];
-
-  const contDetail = trpc.paths.get.useQuery(
-    { id: continuePath?.id ?? 0 },
-    { enabled: !!continuePath },
+  // In-progress first (soonest due), then not started, completed last.
+  const rank = (p: Learnable) =>
+    p.itemCount > 0 && p.progress >= 100 ? 2 : p.progress > 0 ? 0 : 1;
+  const sortedPaths = [...learnerPaths].sort(
+    (a, b) => rank(a) - rank(b) || dueTime(a.dueAt ?? null) - dueTime(b.dueAt ?? null),
   );
-  const nextStep = contDetail.data?.items.find((i) => !i.done)?.title;
+  const continuePath = sortedPaths.find((p) => rank(p) < 2 && p.itemCount > 0) ?? null;
+  const heroThumb = continuePath?.previewSkills?.length
+    ? thumbnailFor(
+        continuePath.previewSkills[0]!.url,
+        continuePath.previewSkills[0]!.thumbnailUrl,
+      )
+    : null;
+  const continueTo = (p: Learnable, base: "/paths" | "/playlists") =>
+    p.nextSkill ? `${base}/${p.id}/learn/${p.nextSkill.resourceId}` : null;
 
   const upcoming = (sessions.data ?? []).filter(
     (s) => new Date(s.scheduledAt).getTime() > Date.now() - 30 * 60000,
@@ -82,6 +168,7 @@ export default function Dashboard() {
   const dueTasks = openTasks
     .filter((t) => t.dueAt && new Date(t.dueAt).getTime() < Date.now() + 24 * 3600 * 1000)
     .sort((a, b) => dueTime(a.dueAt) - dueTime(b.dueAt));
+  const inProgressCount = learnerPaths.filter((p) => p.progress > 0 && p.progress < 100).length;
 
   if (me.isLoading) return <Spinner label="Loading…" />;
 
@@ -97,30 +184,57 @@ export default function Dashboard() {
 
       {/* Quick stats */}
       <div className="grid grid-cols-3 gap-3">
-        <Stat icon={RouteIcon} value={inProgress.length} label="In progress" to="/paths" />
+        <Stat icon={RouteIcon} value={inProgressCount} label="In progress" to="/paths" />
         <Stat icon={ClipboardCheck} value={openTasks.length} label="Tasks to do" to="/mentoring" />
         <Stat icon={CalendarClock} value={upcoming.length} label="Upcoming" to="/schedule" />
       </div>
 
-      {/* Continue where you left off */}
+      {/* Continue where you left off — one click into the workspace */}
       {continuePath && (
-        <Card className="border-navy/15 bg-navy/[0.03] p-6">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-navy/50">
-            Continue where you left off
-          </div>
-          <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="text-lg font-bold text-navy-900">{continuePath.title}</h3>
-              {nextStep && (
-                <p className="mt-0.5 truncate text-sm text-ink/60">Next: {nextStep}</p>
-              )}
+        <section aria-label="Continue learning">
+          <div className="overflow-hidden rounded-2xl bg-navy-950 text-white shadow-[var(--shadow-pop)]">
+            <div className="flex flex-col sm:flex-row">
+              <div className="relative h-36 w-full shrink-0 sm:h-auto sm:w-64">
+                {heroThumb ? (
+                  <img src={heroThumb} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-navy-700 to-navy-950 px-3 text-center text-xs font-bold uppercase tracking-widest text-white/40">
+                    {continuePath.title.slice(0, 24)}
+                  </div>
+                )}
+                <span className="absolute inset-x-0 bottom-0 h-1 bg-black/40">
+                  <span
+                    className="block h-full bg-gold transition-[width] duration-700"
+                    style={{ width: `${continuePath.progress}%` }}
+                  />
+                </span>
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 p-5">
+                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-gold">
+                  {continuePath.progress > 0 ? "Continue where you left off" : "Start learning"}
+                </div>
+                <h2 className="text-lg font-bold leading-tight">{continuePath.title}</h2>
+                {continuePath.nextSkill && (
+                  <p className="truncate text-sm text-white/60">
+                    Next: {continuePath.nextSkill.title}
+                  </p>
+                )}
+                <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                  <Link
+                    to={continueTo(continuePath, "/paths") ?? `/paths/${continuePath.id}`}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gold px-4 py-2 text-sm font-bold text-navy-950 transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-gold/60"
+                  >
+                    <Play className="h-4 w-4" fill="currentColor" />
+                    {continuePath.progress > 0 ? "Resume" : "Start now"}
+                  </Link>
+                  <span className="text-sm font-semibold text-white/70">
+                    {continuePath.progress}%
+                  </span>
+                </div>
+              </div>
             </div>
-            <Link to={`/paths/${continuePath.id}`}>
-              <Button icon={ArrowRight}>Continue</Button>
-            </Link>
           </div>
-          <ProgressBar value={continuePath.progress} className="mt-4" />
-        </Card>
+        </section>
       )}
 
       {/* Today's agenda */}
@@ -141,11 +255,10 @@ export default function Dashboard() {
                         {t.title}
                       </span>
                       <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                          isOverdue(t.dueAt)
-                            ? "bg-red-500/12 text-red-600"
-                            : "bg-gold/15 text-gold"
-                        }`}
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+                          isOverdue(t.dueAt) ? "bg-red-500/12 text-red-600" : "bg-gold/15 text-gold",
+                        )}
                       >
                         {isOverdue(t.dueAt) ? "Overdue" : `Due ${dueLabel(t.dueAt)}`}
                       </span>
@@ -156,6 +269,27 @@ export default function Dashboard() {
             )}
           </div>
         </section>
+      )}
+
+      {/* Your mentor — always one tap away */}
+      {isTeam && mentor && (
+        <Link to="/mentoring">
+          <Card className="flex items-center gap-3 p-4 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]">
+            <Avatar name={mentor.name ?? mentor.email ?? "?"} className="h-11 w-11" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-semibold text-navy-900">
+                {mentor.name ?? mentor.email}
+              </span>
+              <span className="block truncate text-xs text-ink/50">
+                {mentor.profile?.headline ?? "Your mentor"}
+              </span>
+            </span>
+            <span className="hidden items-center gap-1 text-sm font-medium text-navy/60 sm:inline-flex">
+              <GraduationCap className="h-4 w-4" /> Mentoring
+            </span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-ink/30" />
+          </Card>
+        </Link>
       )}
 
       {/* Progress */}
@@ -170,7 +304,7 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* Paths */}
+      {/* Paths — top 3, in-progress first */}
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-navy-900">
@@ -183,36 +317,24 @@ export default function Dashboard() {
             My Learning <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        {learnerPaths.length > 0 ? (
+        {sortedPaths.length > 0 ? (
           <div className="space-y-3">
-            {learnerPaths.map((p) => (
-              <Link key={p.id} to={`/paths/${p.id}`}>
-                <Card className="p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-navy-900">{p.title}</span>
-                      {p.progress >= 100 ? (
-                        <span className="rounded-full bg-emerald-500/12 px-2 py-0.5 text-xs font-medium text-emerald-600">
-                          Completed
-                        </span>
-                      ) : (
-                        dueLabel(p.dueAt) && (
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                              isOverdue(p.dueAt) ? "bg-red-500/12 text-red-600" : "bg-gold/15 text-gold"
-                            }`}
-                          >
-                            {isOverdue(p.dueAt) ? "Overdue" : `Due ${dueLabel(p.dueAt)}`}
-                          </span>
-                        )
-                      )}
-                    </div>
-                    <span className="text-sm font-medium text-ink/50">{p.progress}%</span>
-                  </div>
-                  <ProgressBar value={p.progress} className="mt-3" />
-                </Card>
-              </Link>
+            {sortedPaths.slice(0, 3).map((p) => (
+              <LearnRow
+                key={p.id}
+                p={p}
+                detailTo={`/paths/${p.id}`}
+                continueTo={continueTo(p, "/paths")}
+              />
             ))}
+            {sortedPaths.length > 3 && (
+              <Link
+                to="/paths"
+                className="block rounded-xl border border-dashed border-gray-200 p-3 text-center text-sm font-medium text-navy/60 transition hover:border-navy/40 hover:text-navy"
+              >
+                View all {sortedPaths.length} paths
+              </Link>
+            )}
           </div>
         ) : isTeam ? (
           <EmptyState
@@ -248,15 +370,12 @@ export default function Dashboard() {
         {playlists.data && playlists.data.length > 0 ? (
           <div className="space-y-3">
             {playlists.data.slice(0, 3).map((pl) => (
-              <Link key={pl.id} to={`/playlists/${pl.id}`}>
-                <Card className="flex items-center gap-3 p-4 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]">
-                  <ListMusic className="h-4 w-4 shrink-0 text-navy/50" />
-                  <span className="min-w-0 flex-1 truncate font-medium text-navy-900">{pl.title}</span>
-                  <span className="shrink-0 text-sm text-ink/50">
-                    {pl.completedCount}/{pl.itemCount}
-                  </span>
-                </Card>
-              </Link>
+              <LearnRow
+                key={pl.id}
+                p={pl}
+                detailTo={`/playlists/${pl.id}`}
+                continueTo={continueTo(pl, "/playlists")}
+              />
             ))}
           </div>
         ) : (
