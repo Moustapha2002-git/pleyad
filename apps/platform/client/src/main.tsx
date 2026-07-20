@@ -6,6 +6,7 @@ import superjson from "superjson";
 import { trpc } from "./lib/trpc";
 import App from "./App";
 import { ToastProvider } from "./components/Toast";
+import { I18nProvider } from "./lib/i18n";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -27,9 +28,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
+        <I18nProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </I18nProvider>
       </QueryClientProvider>
     </trpc.Provider>
   </React.StrictMode>,

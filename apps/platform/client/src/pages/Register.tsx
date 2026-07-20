@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Building2 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { AuthShell } from "../components/AuthShell";
 import { Button, Field } from "../components/ui";
 
 export default function Register() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
+  const { t } = useT();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,17 +34,17 @@ export default function Register() {
 
   return (
     <AuthShell
-      title={joining ? `Join ${joining.organizationName}` : "Create your space"}
+      title={joining ? t("auth.joinTitle", { org: joining.organizationName }) : t("auth.createTitle")}
       subtitle={
         joining
-          ? `You've been invited as a ${joining.roleLabel.toLowerCase()}.`
-          : "Start centralizing your learning in one place"
+          ? t("auth.joinSubtitle", { role: joining.roleLabel.toLowerCase() })
+          : t("auth.createSubtitle")
       }
       footer={
         <>
-          Already have an account?{" "}
+          {t("auth.haveAccount")}{" "}
           <Link to="/login" className="font-semibold text-navy underline">
-            Sign in
+            {t("auth.signInLink")}
           </Link>
         </>
       }
@@ -51,16 +53,13 @@ export default function Register() {
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/10 p-4">
           <Building2 className="h-5 w-5 shrink-0 text-gold" />
           <p className="text-sm text-ink/80">
-            Creating an account here adds you to{" "}
-            <span className="font-semibold text-navy-900">{joining.organizationName}</span> as a{" "}
-            <span className="font-semibold text-navy-900">{joining.roleLabel}</span>.
+            {t("auth.joinBanner", { org: joining.organizationName, role: joining.roleLabel })}
           </p>
         </div>
       )}
       {inviteToken && invite.data === null && (
         <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          This invite link is no longer valid — you can still create a personal space, or ask your
-          organization for a new link.
+          {t("auth.inviteInvalid")}
         </div>
       )}
 
@@ -77,20 +76,20 @@ export default function Register() {
         }}
       >
         <Field
-          label="Full name"
+          label={t("auth.fullName")}
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
         />
         <Field
-          label="Email"
+          label={t("auth.email")}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
         />
         <Field
-          label="Password"
+          label={t("auth.password")}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -100,10 +99,10 @@ export default function Register() {
         {register.error && <p className="text-sm text-red-600">{register.error.message}</p>}
         <Button type="submit" className="w-full" disabled={register.isPending}>
           {register.isPending
-            ? "Creating…"
+            ? t("auth.creating")
             : joining
-              ? `Join ${joining.organizationName}`
-              : "Create my space"}
+              ? t("auth.join", { org: joining.organizationName })
+              : t("auth.createMySpace")}
         </Button>
       </form>
     </AuthShell>

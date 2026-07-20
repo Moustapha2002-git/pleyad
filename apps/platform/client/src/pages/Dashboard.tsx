@@ -13,6 +13,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { DimensionGauges } from "../components/DimensionGauges";
 import { GettingStarted } from "../components/GettingStarted";
 import { SessionList } from "../components/SessionList";
@@ -60,6 +61,7 @@ function LearnRow({
   detailTo: string;
   continueTo: string | null;
 }) {
+  const { t } = useT();
   const first = p.previewSkills?.[0];
   const thumb = first ? thumbnailFor(first.url, first.thumbnailUrl) : null;
   const done = p.itemCount > 0 && p.progress >= 100;
@@ -86,7 +88,7 @@ function LearnRow({
             <span className="truncate font-semibold text-navy-900">{p.title}</span>
             {done ? (
               <span className="shrink-0 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] font-medium text-emerald-600">
-                Completed
+                {t("dashboard.completed")}
               </span>
             ) : (
               dueLabel(p.dueAt ?? null) && (
@@ -98,7 +100,9 @@ function LearnRow({
                       : "bg-gold/15 text-gold",
                   )}
                 >
-                  {isOverdue(p.dueAt ?? null) ? "Overdue" : `Due ${dueLabel(p.dueAt ?? null)}`}
+                  {isOverdue(p.dueAt ?? null)
+                    ? t("dashboard.overdue")
+                    : t("dashboard.due", { date: dueLabel(p.dueAt ?? null) ?? "" })}
                 </span>
               )
             )}
@@ -113,7 +117,7 @@ function LearnRow({
           </span>
           {p.nextSkill && !done && (
             <span className="mt-0.5 block truncate text-xs text-ink/45">
-              Next: {p.nextSkill.title}
+              {t("dashboard.next", { title: p.nextSkill.title })}
             </span>
           )}
         </span>
@@ -136,6 +140,7 @@ export default function Dashboard() {
     onSuccess: () => window.location.assign("/mentor"),
   });
 
+  const { t } = useT();
   const firstName = me.data?.name?.split(" ")[0] ?? "there";
   const isTeam = me.data?.activeOrganization?.type === "team";
   const isPersonal = !isTeam;
@@ -175,8 +180,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-navy-900">Hi {firstName} 👋</h1>
-        <p className="mt-1 text-ink/55">Here's your development at a glance.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-navy-900">{t("dashboard.greeting", { name: firstName })}</h1>
+        <p className="mt-1 text-ink/55">{t("dashboard.subtitle")}</p>
       </div>
 
       {/* First-visit onboarding (team learners; hides itself once complete) */}
@@ -184,9 +189,9 @@ export default function Dashboard() {
 
       {/* Quick stats */}
       <div className="grid grid-cols-3 gap-3">
-        <Stat icon={RouteIcon} value={inProgressCount} label="In progress" to="/paths" />
-        <Stat icon={ClipboardCheck} value={openTasks.length} label="Tasks to do" to="/mentoring" />
-        <Stat icon={CalendarClock} value={upcoming.length} label="Upcoming" to="/schedule" />
+        <Stat icon={RouteIcon} value={inProgressCount} label={t("dashboard.inProgress")} to="/paths" />
+        <Stat icon={ClipboardCheck} value={openTasks.length} label={t("dashboard.tasksToDo")} to="/mentoring" />
+        <Stat icon={CalendarClock} value={upcoming.length} label={t("dashboard.upcoming")} to="/schedule" />
       </div>
 
       {/* Continue where you left off — one click into the workspace */}
@@ -211,12 +216,12 @@ export default function Dashboard() {
               </div>
               <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 p-5">
                 <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-gold">
-                  {continuePath.progress > 0 ? "Continue where you left off" : "Start learning"}
+                  {continuePath.progress > 0 ? t("dashboard.continueTitle") : t("dashboard.startTitle")}
                 </div>
                 <h2 className="text-lg font-bold leading-tight">{continuePath.title}</h2>
                 {continuePath.nextSkill && (
                   <p className="truncate text-sm text-white/60">
-                    Next: {continuePath.nextSkill.title}
+                    {t("dashboard.next", { title: continuePath.nextSkill.title })}
                   </p>
                 )}
                 <div className="mt-1.5 flex flex-wrap items-center gap-3">
@@ -225,7 +230,7 @@ export default function Dashboard() {
                     className="inline-flex items-center gap-2 rounded-xl bg-gold px-4 py-2 text-sm font-bold text-navy-950 transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-gold/60"
                   >
                     <Play className="h-4 w-4" fill="currentColor" />
-                    {continuePath.progress > 0 ? "Resume" : "Start now"}
+                    {continuePath.progress > 0 ? t("dashboard.resume") : t("dashboard.startNow")}
                   </Link>
                   <span className="text-sm font-semibold text-white/70">
                     {continuePath.progress}%
@@ -240,27 +245,27 @@ export default function Dashboard() {
       {/* Today's agenda */}
       {(todaySessions.length > 0 || dueTasks.length > 0) && (
         <section>
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold">Today</h2>
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold">{t("dashboard.today")}</h2>
           <div className="space-y-3">
             {todaySessions.length > 0 && (
               <SessionList sessions={todaySessions} allowCancel={false} />
             )}
             {dueTasks.length > 0 && (
               <Card className="divide-y divide-gray-100">
-                {dueTasks.map((t) => (
-                  <Link key={t.id} to="/mentoring">
+                {dueTasks.map((td) => (
+                  <Link key={td.id} to="/mentoring">
                     <div className="flex items-center gap-3 p-4 transition hover:bg-gray-50">
                       <ClipboardCheck className="h-4 w-4 shrink-0 text-navy/50" />
                       <span className="min-w-0 flex-1 truncate font-medium text-navy-900">
-                        {t.title}
+                        {td.title}
                       </span>
                       <span
                         className={cn(
                           "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
-                          isOverdue(t.dueAt) ? "bg-red-500/12 text-red-600" : "bg-gold/15 text-gold",
+                          isOverdue(td.dueAt) ? "bg-red-500/12 text-red-600" : "bg-gold/15 text-gold",
                         )}
                       >
-                        {isOverdue(t.dueAt) ? "Overdue" : `Due ${dueLabel(t.dueAt)}`}
+                        {isOverdue(td.dueAt) ? t("dashboard.overdue") : t("dashboard.due", { date: dueLabel(td.dueAt) ?? "" })}
                       </span>
                     </div>
                   </Link>
@@ -281,11 +286,11 @@ export default function Dashboard() {
                 {mentor.name ?? mentor.email}
               </span>
               <span className="block truncate text-xs text-ink/50">
-                {mentor.profile?.headline ?? "Your mentor"}
+                {mentor.profile?.headline ?? t("dashboard.yourMentor")}
               </span>
             </span>
             <span className="hidden items-center gap-1 text-sm font-medium text-navy/60 sm:inline-flex">
-              <GraduationCap className="h-4 w-4" /> Mentoring
+              <GraduationCap className="h-4 w-4" /> {t("nav.mentoring")}
             </span>
             <ChevronRight className="h-5 w-5 shrink-0 text-ink/30" />
           </Card>
@@ -295,7 +300,7 @@ export default function Dashboard() {
       {/* Progress */}
       <section>
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold">
-          My progress
+          {t("dashboard.myProgress")}
         </h2>
         {progression.data ? (
           <DimensionGauges data={progression.data} />
@@ -308,13 +313,13 @@ export default function Dashboard() {
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-navy-900">
-            {isTeam ? "Assigned to you" : "Your paths"}
+            {isTeam ? t("dashboard.assignedToYou") : t("dashboard.yourPaths")}
           </h2>
           <Link
             to="/paths"
             className="inline-flex items-center gap-1 text-sm font-medium text-navy/70 transition hover:text-navy"
           >
-            My Learning <ArrowRight className="h-4 w-4" />
+            {t("dashboard.myLearningLink")} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
         {sortedPaths.length > 0 ? (
@@ -332,24 +337,24 @@ export default function Dashboard() {
                 to="/paths"
                 className="block rounded-xl border border-dashed border-gray-200 p-3 text-center text-sm font-medium text-navy/60 transition hover:border-navy/40 hover:text-navy"
               >
-                View all {sortedPaths.length} paths
+                {t("dashboard.viewAllPaths", { count: sortedPaths.length })}
               </Link>
             )}
           </div>
         ) : isTeam ? (
           <EmptyState
             icon={Plus}
-            title="No paths assigned yet"
-            description="Your mentor will assign learning paths for you here."
+            title={t("dashboard.noPathsAssignedTitle")}
+            description={t("dashboard.noPathsAssignedDesc")}
           />
         ) : (
           <EmptyState
             icon={Plus}
-            title="No learning paths yet"
-            description="Create a guided path and start growing your three dimensions."
+            title={t("dashboard.noPathsYetTitle")}
+            description={t("dashboard.noPathsYetDesc")}
             action={
               <Link to="/paths">
-                <Button icon={Plus}>Create your first path</Button>
+                <Button icon={Plus}>{t("dashboard.createFirstPath")}</Button>
               </Link>
             }
           />
@@ -359,12 +364,12 @@ export default function Dashboard() {
       {/* Playlists */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-navy-900">Your playlists</h2>
+          <h2 className="text-lg font-semibold text-navy-900">{t("dashboard.yourPlaylists")}</h2>
           <Link
             to="/paths"
             className="inline-flex items-center gap-1 text-sm font-medium text-navy/70 transition hover:text-navy"
           >
-            Manage <ArrowRight className="h-4 w-4" />
+            {t("dashboard.manage")} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
         {playlists.data && playlists.data.length > 0 ? (
@@ -385,15 +390,15 @@ export default function Dashboard() {
                 <ListMusic className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold text-navy-900">Build your own playlist</h3>
+                <h3 className="font-semibold text-navy-900">{t("dashboard.buildPlaylistTitle")}</h3>
                 <p className="mt-0.5 max-w-md text-sm text-ink/55">
-                  Collect courses from anywhere and learn at your own pace.
+                  {t("dashboard.buildPlaylistDesc")}
                 </p>
               </div>
             </div>
             <Link to="/paths">
               <Button variant="secondary" icon={Plus}>
-                Start a playlist
+                {t("dashboard.startPlaylist")}
               </Button>
             </Link>
           </Card>

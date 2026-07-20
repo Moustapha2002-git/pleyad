@@ -15,6 +15,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { trpc } from "../lib/trpc";
 import { applyBrandColor } from "../lib/branding";
+import { useT } from "../lib/i18n";
 import { Avatar, cn } from "./ui";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { IncomingCallBanner } from "./IncomingCallBanner";
@@ -29,32 +30,33 @@ type NavItem = { to: string; label: string; short: string; icon: LucideIcon };
  */
 function useNavItems(): NavItem[] {
   const me = trpc.auth.me.useQuery();
+  const { t } = useT();
   const role = me.data?.activeOrganization?.role;
   const inOrg = me.data?.activeOrganization?.type === "team";
 
   if (inOrg && (role === "admin" || role === "owner")) {
     return [
-      { to: "/learners", label: "Learners", short: "Learners", icon: Users },
-      { to: "/mentors", label: "Mentors", short: "Mentors", icon: GraduationCap },
-      { to: "/paths", label: "Paths", short: "Paths", icon: RouteIcon },
-      { to: "/admin", label: "Admin", short: "Admin", icon: Shield },
-      { to: "/analytics", label: "Analytics", short: "Stats", icon: BarChart3 },
+      { to: "/learners", label: t("nav.learners"), short: t("nav.learners"), icon: Users },
+      { to: "/mentors", label: t("nav.mentors"), short: t("nav.mentors"), icon: GraduationCap },
+      { to: "/paths", label: t("nav.paths"), short: t("nav.paths"), icon: RouteIcon },
+      { to: "/admin", label: t("nav.admin"), short: t("nav.admin"), icon: Shield },
+      { to: "/analytics", label: t("nav.analytics"), short: t("nav.stats"), icon: BarChart3 },
     ];
   }
   if (inOrg && (role === "mentor" || role === "manager")) {
     return [
-      { to: "/mentor", label: "My learners", short: "Learners", icon: Users },
-      { to: "/paths", label: "Paths", short: "Paths", icon: RouteIcon },
-      { to: "/schedule", label: "Schedule", short: "Agenda", icon: CalendarDays },
+      { to: "/mentor", label: t("nav.learners"), short: t("nav.learners"), icon: Users },
+      { to: "/paths", label: t("nav.paths"), short: t("nav.paths"), icon: RouteIcon },
+      { to: "/schedule", label: t("nav.schedule"), short: t("nav.agenda"), icon: CalendarDays },
     ];
   }
   const items: NavItem[] = [
-    { to: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard },
-    { to: "/paths", label: "My Learning", short: "Learn", icon: RouteIcon },
+    { to: "/", label: t("nav.dashboard"), short: t("nav.home"), icon: LayoutDashboard },
+    { to: "/paths", label: t("nav.myLearning"), short: t("nav.learn"), icon: RouteIcon },
   ];
   if (inOrg) {
-    items.push({ to: "/schedule", label: "Schedule", short: "Agenda", icon: CalendarDays });
-    items.push({ to: "/mentoring", label: "Mentoring", short: "Mentor", icon: GraduationCap });
+    items.push({ to: "/schedule", label: t("nav.schedule"), short: t("nav.agenda"), icon: CalendarDays });
+    items.push({ to: "/mentoring", label: t("nav.mentoring"), short: t("nav.mentor"), icon: GraduationCap });
   }
   return items;
 }
@@ -95,24 +97,17 @@ function TabLink({ item }: { item: NavItem }) {
   );
 }
 
-const ROLE_LABEL: Record<string, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  manager: "Manager",
-  mentor: "Mentor",
-  member: "Learner",
-};
-
 export function AppShell({ children }: { children: ReactNode }) {
   const me = trpc.auth.me.useQuery();
   const utils = trpc.useUtils();
+  const { t } = useT();
   const logout = trpc.auth.logout.useMutation({
     onSuccess: () => utils.auth.me.invalidate(),
   });
   const items = useNavItems();
   const name = me.data?.name ?? me.data?.email ?? "";
   const roleLabel = me.data?.activeOrganization
-    ? ROLE_LABEL[me.data.activeOrganization.role]
+    ? t(`roles.${me.data.activeOrganization.role}`)
     : null;
   const branding = me.data?.activeOrganization?.branding ?? null;
   const orgName = me.data?.activeOrganization?.name ?? "";
@@ -144,7 +139,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="text-lg font-extrabold tracking-[0.28em] text-white">PLEYAD</span>
           )}
           <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-white/35">
-            {branding?.logoUrl ? "Powered by Pleyad" : "Operating system for learning"}
+            {branding?.logoUrl ? t("common.poweredBy") : t("common.appTagline")}
           </p>
         </div>
         <nav className="mt-8 flex flex-1 flex-col gap-1">
@@ -160,13 +155,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               onClick={() => logout.mutate()}
               className="mt-0.5 flex items-center gap-1 text-xs text-white/45 transition hover:text-white"
             >
-              <LogOut className="h-3 w-3" /> Sign out
+              <LogOut className="h-3 w-3" /> {t("nav.signOut")}
             </button>
           </div>
           <Link
             to="/settings"
             className="rounded-lg p-1.5 text-white/45 transition hover:bg-white/10 hover:text-white"
-            aria-label="Settings"
+            aria-label={t("nav.settings")}
           >
             <SettingsIcon className="h-4 w-4" />
           </Link>
@@ -201,14 +196,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link
               to="/settings"
               className="rounded-lg p-2 text-ink/60 transition hover:bg-gray-100 hover:text-navy md:hidden"
-              aria-label="Settings"
+              aria-label={t("nav.settings")}
             >
               <SettingsIcon className="h-5 w-5" />
             </Link>
             <button
               onClick={() => logout.mutate()}
               className="rounded-lg p-2 text-ink/60 transition hover:bg-gray-100 hover:text-navy md:hidden"
-              aria-label="Sign out"
+              aria-label={t("nav.signOut")}
             >
               <LogOut className="h-5 w-5" />
             </button>

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useT } from "../lib/i18n";
 
 export function AuthShell({
   title,
@@ -11,6 +12,7 @@ export function AuthShell({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const { t } = useT();
   return (
     <div className="grid min-h-full lg:grid-cols-2">
       {/* Brand panel */}
@@ -19,17 +21,12 @@ export function AuthShell({
         <div className="absolute -bottom-28 -left-16 h-80 w-80 rounded-full bg-gold/10 blur-3xl" />
         <div className="relative text-xl font-extrabold tracking-[0.3em]">PLEYAD</div>
         <div className="relative">
-          <h1 className="text-4xl font-bold leading-tight">
-            The operating system
-            <br />
-            for learning.
+          <h1 className="whitespace-pre-line text-4xl font-bold leading-tight">
+            {t("auth.brandHeadline")}
           </h1>
-          <p className="mt-4 max-w-sm text-white/60">
-            Connect everything you learn — across every platform — into one guided, measurable
-            journey.
-          </p>
+          <p className="mt-4 max-w-sm text-white/60">{t("auth.brandSub")}</p>
         </div>
-        <div className="relative text-sm text-white/40">Powered by Pleyad</div>
+        <div className="relative text-sm text-white/40">{t("common.poweredBy")}</div>
       </div>
 
       {/* Form panel */}

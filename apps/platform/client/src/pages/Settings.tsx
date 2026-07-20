@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { GraduationCap, KeyRound, Languages, UserCog } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { LANGS, useT } from "../lib/i18n";
+import type { Lang } from "../lib/i18n";
 import { useToast } from "../components/Toast";
 import {
   Avatar,
@@ -29,12 +31,12 @@ export default function Settings() {
   const me = trpc.auth.me.useQuery();
   const utils = trpc.useUtils();
   const toast = useToast();
+  const { t, lang, setLang } = useT();
 
   const [name, setName] = useState("");
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [lang, setLang] = useState(() => localStorage.getItem("pleyad_lang") ?? "en");
 
   // Mentor profile (self-edited; shown wherever the user mentors)
   const [headline, setHeadline] = useState("");
@@ -62,7 +64,7 @@ export default function Settings() {
     onSuccess: async () => {
       await utils.auth.me.invalidate();
       setMpDirty(false);
-      toast.success("Mentor profile saved");
+      toast.success(t("settings.mentorProfileSaved"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -75,7 +77,7 @@ export default function Settings() {
   const updateProfile = trpc.auth.updateProfile.useMutation({
     onSuccess: async () => {
       await utils.auth.me.invalidate();
-      toast.success("Profile updated");
+      toast.success(t("settings.profileUpdated"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -85,7 +87,7 @@ export default function Settings() {
       setCurrent("");
       setNext("");
       setConfirm("");
-      toast.success("Password changed");
+      toast.success(t("settings.passwordChanged"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -98,12 +100,12 @@ export default function Settings() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <PageHeader title="Settings" subtitle="Manage your account and preferences." />
+      <PageHeader title={t("settings.title")} subtitle={t("settings.subtitle")} />
 
       {/* Profile */}
       <Card className="p-6">
         <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
-          <UserCog className="h-4 w-4" /> Profile
+          <UserCog className="h-4 w-4" /> {t("settings.profile")}
         </h2>
         <div className="mb-5 flex items-center gap-4">
           <Avatar name={name || me.data.email} className="h-14 w-14 text-base" />
@@ -116,11 +118,11 @@ export default function Settings() {
           }}
           className="space-y-4"
         >
-          <Row label="Display name">
-            <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+          <Row label={t("settings.displayName")}>
+            <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder={t("settings.yourName")} />
           </Row>
           <Button type="submit" disabled={!nameChanged || updateProfile.isPending}>
-            {updateProfile.isPending ? "Saving…" : "Save changes"}
+            {updateProfile.isPending ? t("common.saving") : t("common.saveChanges")}
           </Button>
         </form>
       </Card>
@@ -131,10 +133,10 @@ export default function Settings() {
       ) && (
         <Card className="p-6">
           <h2 className="mb-1 flex items-center gap-2 text-base font-semibold text-navy-900">
-            <GraduationCap className="h-4 w-4" /> Mentor profile
+            <GraduationCap className="h-4 w-4" /> {t("settings.mentorProfile")}
           </h2>
           <p className="mb-4 text-sm text-ink/55">
-            Learners and admins see this wherever you mentor — keep it short and real.
+            {t("settings.mentorProfileHint")}
           </p>
           <form
             onSubmit={(e) => {
@@ -149,7 +151,7 @@ export default function Settings() {
             }}
             className="space-y-4"
           >
-            <Row label="Headline" hint="One line, e.g. “Full-stack developer & career coach”.">
+            <Row label={t("settings.headline")} hint={t("settings.headlineHint")}>
               <TextInput
                 value={headline}
                 maxLength={160}
@@ -159,7 +161,7 @@ export default function Settings() {
                 }}
               />
             </Row>
-            <Row label="Bio">
+            <Row label={t("settings.bio")}>
               <Textarea
                 value={bio}
                 rows={4}
@@ -168,11 +170,11 @@ export default function Settings() {
                   setBio(e.target.value);
                   setMpDirty(true);
                 }}
-                placeholder="Your experience, what you help with, how you work…"
+                placeholder={t("settings.bioPlaceholder")}
               />
             </Row>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Row label="Expertise" hint="Comma-separated, e.g. Python, UX, Entrepreneurship.">
+              <Row label={t("settings.expertise")} hint={t("settings.expertiseHint")}>
                 <TextInput
                   value={expertise}
                   onChange={(e) => {
@@ -181,7 +183,7 @@ export default function Settings() {
                   }}
                 />
               </Row>
-              <Row label="Languages" hint="e.g. Français, العربية, English.">
+              <Row label={t("settings.languagesLabel")} hint={t("settings.languagesHint")}>
                 <TextInput
                   value={languages}
                   onChange={(e) => {
@@ -191,7 +193,7 @@ export default function Settings() {
                 />
               </Row>
             </div>
-            <Row label="Availability" hint="e.g. “Mon–Wed evenings, Sat mornings”.">
+            <Row label={t("settings.availability")} hint={t("settings.availabilityHint")}>
               <TextInput
                 value={availability}
                 maxLength={200}
@@ -202,7 +204,7 @@ export default function Settings() {
               />
             </Row>
             <Button type="submit" disabled={!mpDirty || updateMentorProfile.isPending}>
-              {updateMentorProfile.isPending ? "Saving…" : "Save mentor profile"}
+              {updateMentorProfile.isPending ? t("common.saving") : t("settings.saveMentorProfile")}
             </Button>
           </form>
         </Card>
@@ -211,7 +213,7 @@ export default function Settings() {
       {/* Security */}
       <Card className="p-6">
         <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
-          <KeyRound className="h-4 w-4" /> Password
+          <KeyRound className="h-4 w-4" /> {t("settings.password")}
         </h2>
         <form
           onSubmit={(e) => {
@@ -221,7 +223,7 @@ export default function Settings() {
           }}
           className="space-y-4"
         >
-          <Row label="Current password">
+          <Row label={t("settings.currentPassword")}>
             <TextInput
               type="password"
               value={current}
@@ -229,7 +231,7 @@ export default function Settings() {
               autoComplete="current-password"
             />
           </Row>
-          <Row label="New password" hint="At least 8 characters.">
+          <Row label={t("settings.newPassword")} hint={t("settings.newPasswordHint")}>
             <TextInput
               type="password"
               value={next}
@@ -237,7 +239,7 @@ export default function Settings() {
               autoComplete="new-password"
             />
           </Row>
-          <Row label="Confirm new password">
+          <Row label={t("settings.confirmPassword")}>
             <TextInput
               type="password"
               value={confirm}
@@ -245,11 +247,11 @@ export default function Settings() {
               autoComplete="new-password"
             />
             {confirm.length > 0 && confirm !== next && (
-              <span className="mt-1 block text-xs text-red-500">Passwords don't match.</span>
+              <span className="mt-1 block text-xs text-red-500">{t("settings.passwordsDontMatch")}</span>
             )}
           </Row>
           <Button type="submit" disabled={!passwordValid || changePassword.isPending}>
-            {changePassword.isPending ? "Updating…" : "Change password"}
+            {changePassword.isPending ? t("settings.updating") : t("settings.changePassword")}
           </Button>
         </form>
       </Card>
@@ -257,24 +259,25 @@ export default function Settings() {
       {/* Preferences */}
       <Card className="p-6">
         <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
-          <Languages className="h-4 w-4" /> Language
+          <Languages className="h-4 w-4" /> {t("settings.language")}
         </h2>
         <Row
-          label="Interface language"
-          hint="Full translation is rolling out — this saves your preference."
+          label={t("settings.interfaceLanguage")}
+          hint={t("settings.languageHint")}
         >
           <Select
             value={lang}
             onChange={(e) => {
-              setLang(e.target.value);
-              localStorage.setItem("pleyad_lang", e.target.value);
-              toast.success("Language preference saved");
+              setLang(e.target.value as Lang);
+              toast.success(t("settings.languageSaved"));
             }}
             className="max-w-xs"
           >
-            <option value="en">English</option>
-            <option value="fr">Français</option>
-            <option value="ar">العربية</option>
+            {LANGS.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.label}
+              </option>
+            ))}
           </Select>
         </Row>
       </Card>
