@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
-import { useT } from "../lib/i18n";
+import { dateLocale, useT } from "../lib/i18n";
 import { useToast } from "../components/Toast";
 import {
   Avatar,
@@ -61,8 +61,8 @@ const sessionLabel = (d: Date | string | null, t: T) => {
   const x = new Date(d);
   const day = isToday(d)
     ? t("mentorLearners.today")
-    : x.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  const time = x.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    : x.toLocaleDateString(dateLocale(), { month: "short", day: "numeric" });
+  const time = x.toLocaleTimeString(dateLocale(), { hour: "numeric", minute: "2-digit" });
   return `${day} · ${time}`;
 };
 

@@ -12,7 +12,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
-import { useT } from "../lib/i18n";
+import { dateLocale, useT } from "../lib/i18n";
 import {
   Avatar,
   Badge,
@@ -39,7 +39,7 @@ const lastSeen = (d: string | Date | null, t: T) => {
 };
 const fmtSession = (d: string | Date | null) =>
   d
-    ? new Date(d).toLocaleString(undefined, {
+    ? new Date(d).toLocaleString(dateLocale(), {
         month: "short",
         day: "numeric",
         hour: "numeric",

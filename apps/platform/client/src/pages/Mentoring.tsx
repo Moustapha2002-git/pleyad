@@ -13,7 +13,7 @@ import {
   Video,
 } from "lucide-react";
 import { trpc } from "../lib/trpc";
-import { useT } from "../lib/i18n";
+import { dateLocale, useT } from "../lib/i18n";
 import { useToast } from "../components/Toast";
 import { VideoCall } from "../components/VideoCall";
 import { MessageThread } from "../components/MessageThread";
@@ -34,15 +34,15 @@ const dueTime = (d: string | Date | null) => (d ? new Date(d).getTime() : Infini
 const isOverdue = (d: string | Date | null) => !!d && new Date(d).getTime() < Date.now();
 function dueLabel(dueAt: string | Date | null) {
   if (!dueAt) return null;
-  return new Date(dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return new Date(dueAt).toLocaleDateString(dateLocale(), { month: "short", day: "numeric" });
 }
 const sessionWhen = (d: string | Date) => {
   const x = new Date(d);
   const day =
     x.toDateString() === new Date().toDateString()
       ? "Today"
-      : x.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-  return `${day} · ${x.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+      : x.toLocaleDateString(dateLocale(), { weekday: "short", month: "short", day: "numeric" });
+  return `${day} · ${x.toLocaleTimeString(dateLocale(), { hour: "numeric", minute: "2-digit" })}`;
 };
 
 /** "live" while in progress, "soon" within 15 min of start, else null. */
@@ -425,7 +425,7 @@ export default function Mentoring() {
                     <p className="text-sm leading-relaxed text-ink">{f.body}</p>
                     <p className="mt-1.5 text-xs text-ink/40">
                       {f.mentorName ?? t("mentoring.mentorFallback")} ·{" "}
-                      {new Date(f.createdAt).toLocaleDateString()}
+                      {new Date(f.createdAt).toLocaleDateString(dateLocale())}
                       {i === 0 && (
                         <span className="ml-2 rounded-full bg-gold/15 px-1.5 py-0.5 text-[10px] font-semibold text-gold">
                           {t("mentoring.latest")}

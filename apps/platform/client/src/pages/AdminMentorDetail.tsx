@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
-import { useT } from "../lib/i18n";
+import { dateLocale, useT } from "../lib/i18n";
 import { useToast } from "../components/Toast";
 import {
   Avatar,
@@ -35,10 +35,10 @@ type Tab = (typeof TABS)[number]["key"];
 
 const fmtDate = (d: string | Date | null) =>
   d
-    ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    ? new Date(d).toLocaleDateString(dateLocale(), { month: "short", day: "numeric", year: "numeric" })
     : "—";
 const fmtWhen = (d: string | Date) =>
-  new Date(d).toLocaleString(undefined, {
+  new Date(d).toLocaleString(dateLocale(), {
     weekday: "short",
     month: "short",
     day: "numeric",

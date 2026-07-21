@@ -10,10 +10,22 @@ export const LANGS: { code: Lang; label: string }[] = [
 
 const STORAGE_KEY = "pleyad_lang";
 
+/** BCP-47 tag per language — drives Intl date/time formatting. */
+const LOCALE: Record<Lang, string> = { en: "en-US", fr: "fr-FR" };
+
 function getInitial(): Lang {
   const v = typeof localStorage !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
   return v === "fr" || v === "en" ? v : "en";
 }
+
+/**
+ * Current Intl locale, kept in sync by <I18nProvider> on every render.
+ * Module-level so plain formatter helpers can read it without a hook —
+ * pass it to toLocaleDateString/toLocaleTimeString instead of `undefined`,
+ * which would follow the browser's locale rather than the chosen language.
+ */
+let currentLocale: string = LOCALE[getInitial()];
+export const dateLocale = () => currentLocale;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function lookup(obj: any, path: string): string | undefined {
@@ -30,6 +42,10 @@ const I18nContext = createContext<Ctx | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(getInitial);
+
+  // Sync during render so children formatting dates in this same pass
+  // already see the new locale.
+  currentLocale = LOCALE[lang];
 
   useEffect(() => {
     document.documentElement.lang = lang;

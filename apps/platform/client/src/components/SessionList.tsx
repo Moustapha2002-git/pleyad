@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CalendarDays, Pencil, Video, X } from "lucide-react";
 import { trpc } from "../lib/trpc";
-import { useT } from "../lib/i18n";
+import { dateLocale, useT } from "../lib/i18n";
 import { useToast } from "./Toast";
 import { VideoCall } from "./VideoCall";
 import { callRoomName } from "../lib/room";
@@ -21,7 +21,7 @@ type Session = {
 };
 
 function formatWhen(dt: Date) {
-  return dt.toLocaleString(undefined, {
+  return dt.toLocaleString(dateLocale(), {
     weekday: "short",
     month: "short",
     day: "numeric",

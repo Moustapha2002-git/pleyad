@@ -14,7 +14,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
-import { useT } from "../lib/i18n";
+import { dateLocale, useT } from "../lib/i18n";
 import { useToast } from "../components/Toast";
 import {
   Avatar,
@@ -43,7 +43,7 @@ const FILTERS: { key: StatusFilter; labelKey: string }[] = [
 type T = (key: string, vars?: Record<string, string | number>) => string;
 
 const fmtDate = (d: string | Date | null) =>
-  d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—";
+  d ? new Date(d).toLocaleDateString(dateLocale(), { month: "short", day: "numeric", year: "numeric" }) : "—";
 const lastActive = (d: string | Date | null, t: T) => {
   if (!d) return t("adminLearners.noActivity");
   const days = Math.floor((Date.now() - new Date(d).getTime()) / 86_400_000);

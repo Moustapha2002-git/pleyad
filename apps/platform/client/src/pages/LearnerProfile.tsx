@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
-import { useT } from "../lib/i18n";
+import { dateLocale, useT } from "../lib/i18n";
 import { useToast } from "../components/Toast";
 import { DimensionGauges } from "../components/DimensionGauges";
 import { VideoCall } from "../components/VideoCall";
@@ -33,7 +33,7 @@ import {
 
 function dueLabel(dueAt: string | Date | null) {
   if (!dueAt) return null;
-  return new Date(dueAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return new Date(dueAt).toLocaleDateString(dateLocale(), { month: "short", day: "numeric" });
 }
 
 const TABS = [
@@ -240,7 +240,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
             {[
               {
                 label: t("learnerProfile.registered"),
-                value: new Date(p.learner.registeredAt).toLocaleDateString(undefined, {
+                value: new Date(p.learner.registeredAt).toLocaleDateString(dateLocale(), {
                   month: "short",
                   day: "numeric",
                   year: "numeric",
@@ -249,7 +249,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
               {
                 label: t("learnerProfile.lastSignIn"),
                 value: p.learner.lastSignedInAt
-                  ? new Date(p.learner.lastSignedInAt).toLocaleDateString(undefined, {
+                  ? new Date(p.learner.lastSignedInAt).toLocaleDateString(dateLocale(), {
                       month: "short",
                       day: "numeric",
                     })
@@ -258,7 +258,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
               {
                 label: t("learnerProfile.joinedWorkspace"),
                 value: p.learner.joinedAt
-                  ? new Date(p.learner.joinedAt).toLocaleDateString(undefined, {
+                  ? new Date(p.learner.joinedAt).toLocaleDateString(dateLocale(), {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
@@ -535,7 +535,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
                 <div key={f.id} className="rounded-xl border border-gray-100 p-3">
                   <p className="text-sm text-ink">{f.body}</p>
                   <p className="mt-1 text-xs text-ink/40">
-                    {new Date(f.createdAt).toLocaleDateString()}
+                    {new Date(f.createdAt).toLocaleDateString(dateLocale())}
                   </p>
                 </div>
               ))}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { trpc } from "../lib/trpc";
-import { useT } from "../lib/i18n";
+import { dateLocale, useT } from "../lib/i18n";
 import { Button, Card, TextInput, cn } from "./ui";
 
 function dayLabel(d: string | Date, t: (k: string) => string) {
@@ -10,10 +10,10 @@ function dayLabel(d: string | Date, t: (k: string) => string) {
   const yesterday = new Date(today.getTime() - 86_400_000);
   if (x.toDateString() === today.toDateString()) return t("messages.today");
   if (x.toDateString() === yesterday.toDateString()) return t("messages.yesterday");
-  return x.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  return x.toLocaleDateString(dateLocale(), { weekday: "short", month: "short", day: "numeric" });
 }
 const timeLabel = (d: string | Date) =>
-  new Date(d).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  new Date(d).toLocaleTimeString(dateLocale(), { hour: "numeric", minute: "2-digit" });
 
 /** Two-way 1:1 message thread with another user in the active workspace.
  *  Used by both the mentor (LearnerProfile) and the learner (Mentoring). */

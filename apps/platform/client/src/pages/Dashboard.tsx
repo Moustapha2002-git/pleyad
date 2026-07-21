@@ -13,7 +13,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
-import { useT } from "../lib/i18n";
+import { dateLocale, useT } from "../lib/i18n";
 import { DimensionGauges } from "../components/DimensionGauges";
 import { GettingStarted } from "../components/GettingStarted";
 import { SessionList } from "../components/SessionList";
@@ -23,7 +23,7 @@ import { Avatar, Button, Card, EmptyState, ProgressBar, Spinner, cn } from "../c
 const isToday = (d: string | Date) => new Date(d).toDateString() === new Date().toDateString();
 const dueTime = (d: string | Date | null) => (d ? new Date(d).getTime() : Infinity);
 const dueLabel = (d: string | Date | null) =>
-  d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
+  d ? new Date(d).toLocaleDateString(dateLocale(), { month: "short", day: "numeric" }) : null;
 const isOverdue = (d: string | Date | null) => !!d && new Date(d).getTime() < Date.now();
 
 type Learnable = {
