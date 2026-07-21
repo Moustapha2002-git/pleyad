@@ -14,6 +14,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { useToast } from "../components/Toast";
 import {
   Avatar,
@@ -31,22 +32,24 @@ import {
 type StatusFilter = "all" | "active" | "inactive" | "completed" | "suspended";
 type Sort = "name" | "progress" | "recent" | "newest";
 
-const FILTERS: { key: StatusFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "active", label: "Active" },
-  { key: "inactive", label: "Inactive" },
-  { key: "completed", label: "Completed" },
-  { key: "suspended", label: "Suspended" },
+const FILTERS: { key: StatusFilter; labelKey: string }[] = [
+  { key: "all", labelKey: "adminLearners.filterAll" },
+  { key: "active", labelKey: "adminLearners.filterActive" },
+  { key: "inactive", labelKey: "adminLearners.filterInactive" },
+  { key: "completed", labelKey: "adminLearners.filterCompleted" },
+  { key: "suspended", labelKey: "adminLearners.filterSuspended" },
 ];
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
 
 const fmtDate = (d: string | Date | null) =>
   d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—";
-const lastActive = (d: string | Date | null) => {
-  if (!d) return "no activity yet";
+const lastActive = (d: string | Date | null, t: T) => {
+  if (!d) return t("adminLearners.noActivity");
   const days = Math.floor((Date.now() - new Date(d).getTime()) / 86_400_000);
-  if (days <= 0) return "active today";
-  if (days === 1) return "active yesterday";
-  return `active ${days}d ago`;
+  if (days <= 0) return t("adminLearners.activeToday");
+  if (days === 1) return t("adminLearners.activeYesterday");
+  return t("adminLearners.activeDaysAgo", { n: days });
 };
 
 function Stat({ icon: Icon, value, label, tone = "bg-navy/10 text-navy" }: {
@@ -66,6 +69,7 @@ function Stat({ icon: Icon, value, label, tone = "bg-navy/10 text-navy" }: {
 }
 
 export default function AdminLearners() {
+  const { t } = useT();
   const toast = useToast();
   const utils = trpc.useUtils();
 
@@ -100,7 +104,11 @@ export default function AdminLearners() {
   const setLearnerStatus = trpc.admin.setLearnerStatus.useMutation({
     onSuccess: (_r, vars) => {
       refresh();
-      toast.success(vars.status === "suspended" ? "Learner suspended" : "Learner reactivated");
+      toast.success(
+        vars.status === "suspended"
+          ? t("adminLearners.learnerSuspended")
+          : t("adminLearners.learnerReactivated"),
+      );
     },
     onError: (e) => toast.error(e.message),
   });
@@ -108,7 +116,7 @@ export default function AdminLearners() {
     onSuccess: () => {
       refresh();
       utils.admin.members.invalidate();
-      toast.info("Learner removed from this workspace");
+      toast.info(t("adminLearners.learnerRemoved"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -118,27 +126,27 @@ export default function AdminLearners() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Learners" subtitle="Every learner in this workspace, at a glance." />
+      <PageHeader title={t("adminLearners.title")} subtitle={t("adminLearners.subtitle")} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat icon={Users} value={stats?.total ?? "…"} label="Total learners" />
+        <Stat icon={Users} value={stats?.total ?? "…"} label={t("adminLearners.statTotal")} />
         <Stat
           icon={GraduationCap}
           value={stats?.active ?? "…"}
-          label="Active this week"
+          label={t("adminLearners.statActive")}
           tone="bg-emerald-500/12 text-emerald-600"
         />
         <Stat
           icon={CheckCircle2}
           value={stats?.completed ?? "…"}
-          label="Completed all paths"
+          label={t("adminLearners.statCompleted")}
           tone="bg-gold/15 text-gold"
         />
         <Stat
           icon={TrendingUp}
           value={`${stats?.avgProgress ?? "…"}%`}
-          label="Average progress"
+          label={t("adminLearners.statAvgProgress")}
           tone="bg-dim-knowledge/10 text-dim-knowledge"
         />
       </div>
@@ -151,23 +159,23 @@ export default function AdminLearners() {
             <TextInput
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or email…"
+              placeholder={t("adminLearners.searchPlaceholder")}
               className="pl-9"
             />
           </div>
           <Select value={mentorId} onChange={(e) => setMentorId(e.target.value)}>
-            <option value="">Any mentor</option>
+            <option value="">{t("adminLearners.anyMentor")}</option>
             {mentors.map((m) => (
               <option key={m.userId} value={m.userId}>
-                Mentor: {m.name ?? m.email}
+                {t("adminLearners.mentorOption", { name: m.name ?? m.email ?? "" })}
               </option>
             ))}
           </Select>
           <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
-            <option value="name">Sort: Name</option>
-            <option value="progress">Sort: Progress</option>
-            <option value="recent">Sort: Recently active</option>
-            <option value="newest">Sort: Newest members</option>
+            <option value="name">{t("adminLearners.sortName")}</option>
+            <option value="progress">{t("adminLearners.sortProgress")}</option>
+            <option value="recent">{t("adminLearners.sortRecent")}</option>
+            <option value="newest">{t("adminLearners.sortNewest")}</option>
           </Select>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -182,7 +190,7 @@ export default function AdminLearners() {
                   : "border-gray-200 text-ink/60 hover:border-navy/40",
               )}
             >
-              {f.label}
+              {t(f.labelKey)}
             </button>
           ))}
         </div>
@@ -194,8 +202,8 @@ export default function AdminLearners() {
       ) : (data?.rows.length ?? 0) === 0 ? (
         <EmptyState
           icon={Users}
-          title="No learners match"
-          description="Try a different search or filter — or invite learners from the Admin page."
+          title={t("adminLearners.emptyTitle")}
+          description={t("adminLearners.emptyDesc")}
         />
       ) : (
         <>
@@ -214,17 +222,17 @@ export default function AdminLearners() {
                         </span>
                         {suspended ? (
                           <span className="rounded-full bg-red-500/12 px-2 py-0.5 text-[11px] font-medium text-red-600">
-                            Suspended
+                            {t("adminLearners.suspended")}
                           </span>
                         ) : completed ? (
                           <span className="rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] font-medium text-emerald-600">
-                            Completed
+                            {t("adminLearners.completed")}
                           </span>
                         ) : (
                           <span className="rounded-full bg-navy/10 px-2 py-0.5 text-[11px] font-medium text-navy/70">
-                            {lastActive(l.lastActivityAt) === "no activity yet"
-                              ? "Not started"
-                              : "Active"}
+                            {l.lastActivityAt
+                              ? t("adminLearners.active")
+                              : t("adminLearners.notStarted")}
                           </span>
                         )}
                       </div>
@@ -238,14 +246,19 @@ export default function AdminLearners() {
                   </div>
 
                   <div className="mt-2 text-xs text-ink/50">
-                    {l.assignedCount} path{l.assignedCount === 1 ? "" : "s"} · {l.completedCount}{" "}
-                    completed ·{" "}
+                    {l.assignedCount === 1
+                      ? t("adminLearners.pathCountOne", { n: l.assignedCount })
+                      : t("adminLearners.pathCount", { n: l.assignedCount })}{" "}
+                    · {t("adminLearners.completedCount", { n: l.completedCount })} ·{" "}
                     {l.mentors.length > 0
-                      ? `mentor ${l.mentors.map((m) => m.name ?? "?").join(", ")}`
-                      : "no mentor"}
+                      ? t("adminLearners.mentorLabel", {
+                          names: l.mentors.map((m) => m.name ?? "?").join(", "),
+                        })
+                      : t("adminLearners.noMentor")}
                   </div>
                   <div className="mt-0.5 text-xs text-ink/40">
-                    {lastActive(l.lastActivityAt)} · joined {fmtDate(l.joinedAt)}
+                    {lastActive(l.lastActivityAt, t)} ·{" "}
+                    {t("adminLearners.joined", { date: fmtDate(l.joinedAt) })}
                   </div>
 
                   <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-3">
@@ -253,7 +266,7 @@ export default function AdminLearners() {
                       to={`/mentor/${l.userId}`}
                       className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-navy/70 transition hover:bg-gray-50 hover:text-navy"
                     >
-                      <Eye className="h-3.5 w-3.5" /> View profile
+                      <Eye className="h-3.5 w-3.5" /> {t("adminLearners.viewProfile")}
                     </Link>
                     <button
                       onClick={() =>
@@ -268,22 +281,22 @@ export default function AdminLearners() {
                           ? "border-emerald-200 text-emerald-600 hover:bg-emerald-50"
                           : "border-gray-200 text-ink/60 hover:bg-gray-50",
                       )}
-                      title={suspended ? "Reactivate" : "Suspend"}
+                      title={suspended ? t("adminLearners.reactivate") : t("adminLearners.suspend")}
                     >
                       <Ban className="h-3.5 w-3.5" />
-                      {suspended ? "Reactivate" : "Suspend"}
+                      {suspended ? t("adminLearners.reactivate") : t("adminLearners.suspend")}
                     </button>
                     <button
                       onClick={() => {
                         if (
                           window.confirm(
-                            `Remove ${l.name ?? l.email} from this workspace? Their account and personal data stay intact.`,
+                            t("adminLearners.removeConfirm", { name: l.name ?? l.email ?? "" }),
                           )
                         )
                           removeLearner.mutate({ userId: l.userId });
                       }}
                       className="inline-flex items-center rounded-lg border border-gray-200 p-1.5 text-ink/50 transition hover:bg-red-50 hover:text-red-600"
-                      aria-label="Remove from workspace"
+                      aria-label={t("adminLearners.removeAria")}
                     >
                       <UserMinus className="h-3.5 w-3.5" />
                     </button>
@@ -297,8 +310,17 @@ export default function AdminLearners() {
           {data!.pageCount > 1 && (
             <div className="flex items-center justify-between">
               <span className="text-sm text-ink/50">
-                {data!.totalFiltered} learner{data!.totalFiltered === 1 ? "" : "s"} · page{" "}
-                {data!.page} of {data!.pageCount}
+                {data!.totalFiltered === 1
+                  ? t("adminLearners.pageInfoOne", {
+                      n: data!.totalFiltered,
+                      page: data!.page,
+                      pages: data!.pageCount,
+                    })
+                  : t("adminLearners.pageInfo", {
+                      n: data!.totalFiltered,
+                      page: data!.page,
+                      pages: data!.pageCount,
+                    })}
               </span>
               <div className="flex gap-2">
                 <Button
@@ -307,7 +329,7 @@ export default function AdminLearners() {
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
                 >
-                  Prev
+                  {t("adminLearners.prev")}
                 </Button>
                 <Button
                   variant="secondary"
@@ -315,7 +337,7 @@ export default function AdminLearners() {
                   disabled={page >= data!.pageCount}
                   onClick={() => setPage((p) => p + 1)}
                 >
-                  Next
+                  {t("adminLearners.next")}
                 </Button>
               </div>
             </div>

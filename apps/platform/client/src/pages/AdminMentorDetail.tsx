@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { useToast } from "../components/Toast";
 import {
   Avatar,
@@ -25,10 +26,10 @@ import {
 } from "../components/ui";
 
 const TABS = [
-  { key: "overview", label: "Overview" },
-  { key: "learners", label: "Learners" },
-  { key: "paths", label: "Paths" },
-  { key: "sessions", label: "Sessions" },
+  { key: "overview", labelKey: "tabOverview" },
+  { key: "learners", labelKey: "tabLearners" },
+  { key: "paths", labelKey: "tabPaths" },
+  { key: "sessions", labelKey: "tabSessions" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
@@ -46,6 +47,7 @@ const fmtWhen = (d: string | Date) =>
   });
 
 export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
+  const { t } = useT();
   const toast = useToast();
   const utils = trpc.useUtils();
   const [tab, setTab] = useState<Tab>("overview");
@@ -68,20 +70,20 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
     onSuccess: () => {
       setAssignId("");
       refresh();
-      toast.success("Learner assigned to this mentor");
+      toast.success(t("adminMentorDetail.learnerAssigned"));
     },
     onError: (e) => toast.error(e.message),
   });
   const unassignMentor = trpc.admin.unassignMentor.useMutation({
     onSuccess: () => {
       refresh();
-      toast.info("Learner removed from this mentor");
+      toast.info(t("adminMentorDetail.learnerRemoved"));
     },
     onError: (e) => toast.error(e.message),
   });
 
-  if (dir.isLoading) return <Spinner label="Loading mentor…" />;
-  if (!mentor) return <p className="text-ink/50">Mentor not found.</p>;
+  if (dir.isLoading) return <Spinner label={t("adminMentorDetail.loading")} />;
+  if (!mentor) return <p className="text-ink/50">{t("adminMentorDetail.notFound")}</p>;
 
   const name = mentor.name ?? mentor.email;
   const unmentored = (members.data ?? []).filter((m) => m.role === "member" && !m.mentorUserId);
@@ -93,7 +95,7 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
         to="/mentors"
         className="inline-flex items-center gap-1 text-sm text-navy/60 transition hover:text-navy"
       >
-        <ArrowLeft className="h-4 w-4" /> Mentors
+        <ArrowLeft className="h-4 w-4" /> {t("adminMentorDetail.back")}
       </Link>
 
       <div className="flex flex-wrap items-center gap-4">
@@ -103,27 +105,27 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
           <p className="text-ink/50">{mentor.profile.headline ?? mentor.email}</p>
         </div>
         <Badge className="bg-gold/15 text-gold">
-          {mentor.role === "mentor" ? "Mentor" : mentor.role}
+          {t(`roles.${mentor.role}`)}
         </Badge>
       </div>
 
       {/* Tab bar */}
       <div className="flex flex-wrap gap-1 border-b border-gray-200">
-        {TABS.map((t) => (
+        {TABS.map((tb) => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
             className={cn(
               "-mb-px border-b-2 px-3.5 py-2.5 text-sm font-medium transition",
-              tab === t.key
+              tab === tb.key
                 ? "border-navy-900 text-navy-900"
                 : "border-transparent text-ink/55 hover:text-navy",
             )}
           >
-            {t.label}
-            {t.key === "learners" && ` (${mentor.learnerCount})`}
-            {t.key === "paths" && ` (${authored.length})`}
-            {t.key === "sessions" && ` (${mentor.upcomingSessions})`}
+            {t(`adminMentorDetail.${tb.labelKey}`)}
+            {tb.key === "learners" && ` (${mentor.learnerCount})`}
+            {tb.key === "paths" && ` (${authored.length})`}
+            {tb.key === "sessions" && ` (${mentor.upcomingSessions})`}
           </button>
         ))}
       </div>
@@ -139,7 +141,7 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
             <Card className="space-y-4 p-6">
               {mentor.profile.bio && (
                 <div>
-                  <h2 className="mb-1 text-sm font-semibold text-navy-900">About</h2>
+                  <h2 className="mb-1 text-sm font-semibold text-navy-900">{t("adminMentorDetail.about")}</h2>
                   <p className="whitespace-pre-line text-sm leading-relaxed text-ink/70">
                     {mentor.profile.bio}
                   </p>
@@ -149,7 +151,7 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
                 {mentor.profile.expertise.length > 0 && (
                   <div>
                     <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/40">
-                      Expertise
+                      {t("adminMentorDetail.expertise")}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {mentor.profile.expertise.map((tag) => (
@@ -166,7 +168,7 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
                 {mentor.profile.languages.length > 0 && (
                   <div>
                     <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/40">
-                      Languages
+                      {t("adminMentorDetail.languages")}
                     </div>
                     <div className="text-sm text-ink/70">
                       {mentor.profile.languages.join(" · ")}
@@ -176,14 +178,14 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
                 {mentor.profile.availabilityNote && (
                   <div>
                     <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/40">
-                      Availability
+                      {t("adminMentorDetail.availability")}
                     </div>
                     <div className="text-sm text-ink/70">{mentor.profile.availabilityNote}</div>
                   </div>
                 )}
                 <div>
                   <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/40">
-                    Contact
+                    {t("adminMentorDetail.contact")}
                   </div>
                   <a
                     href={`mailto:${mentor.email}`}
@@ -198,10 +200,13 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
 
           <Card className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4">
             {[
-              { label: "Joined workspace", value: fmtDate(mentor.joinedAt) },
-              { label: "Last sign-in", value: fmtDate(mentor.lastSignedInAt) },
-              { label: "Paths authored", value: String(mentor.pathsAuthored) },
-              { label: "Upcoming sessions", value: String(mentor.upcomingSessions) },
+              { label: t("adminMentorDetail.joinedWorkspace"), value: fmtDate(mentor.joinedAt) },
+              { label: t("adminMentorDetail.lastSignIn"), value: fmtDate(mentor.lastSignedInAt) },
+              { label: t("adminMentorDetail.pathsAuthored"), value: String(mentor.pathsAuthored) },
+              {
+                label: t("adminMentorDetail.upcomingSessions"),
+                value: String(mentor.upcomingSessions),
+              },
             ].map((f) => (
               <div key={f.label}>
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-ink/40">
@@ -215,12 +220,12 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
           {/* Performance — real numbers, derived from the cohort */}
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold">
-              Cohort performance
+              {t("adminMentorDetail.cohortPerformance")}
             </h2>
             <div className="grid gap-4 sm:grid-cols-3">
               <Card className="p-5">
                 <div className="text-3xl font-bold text-navy-900">{mentor.avgProgress}%</div>
-                <div className="mt-1 text-sm text-ink/55">Average learner progress</div>
+                <div className="mt-1 text-sm text-ink/55">{t("adminMentorDetail.avgLearnerProgress")}</div>
                 <ProgressBar value={mentor.avgProgress} className="mt-3" />
               </Card>
               <Card className="p-5">
@@ -228,7 +233,7 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
                   {mentor.completedLearners}
                   <span className="text-lg text-ink/40">/{mentor.learnerCount}</span>
                 </div>
-                <div className="mt-1 text-sm text-ink/55">Learners completed all paths</div>
+                <div className="mt-1 text-sm text-ink/55">{t("adminMentorDetail.learnersCompleted")}</div>
                 <ProgressBar
                   value={
                     mentor.learnerCount
@@ -248,7 +253,7 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
                 >
                   {mentor.atRiskCount}
                 </div>
-                <div className="mt-1 text-sm text-ink/55">Learners needing attention</div>
+                <div className="mt-1 text-sm text-ink/55">{t("adminMentorDetail.learnersNeedAttention")}</div>
                 <ProgressBar
                   value={
                     mentor.learnerCount ? (mentor.atRiskCount / mentor.learnerCount) * 100 : 0
@@ -258,9 +263,7 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
                 />
               </Card>
             </div>
-            <p className="mt-2 text-xs text-ink/40">
-              Derived live from learner activity. Learner ratings are a future, separate feature.
-            </p>
+            <p className="mt-2 text-xs text-ink/40">{t("adminMentorDetail.derivedNote")}</p>
           </section>
         </div>
       )}
@@ -271,7 +274,7 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
           {/* Assign a learner */}
           <Card className="p-5">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-navy-900">
-              <UserPlus className="h-4 w-4" /> Assign a learner
+              <UserPlus className="h-4 w-4" /> {t("adminMentorDetail.assignLearner")}
             </h2>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Select
@@ -281,8 +284,8 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
               >
                 <option value="">
                   {unmentored.length > 0
-                    ? "Choose an unmentored learner…"
-                    : "Every learner already has a mentor"}
+                    ? t("adminMentorDetail.chooseUnmentored")
+                    : t("adminMentorDetail.allHaveMentor")}
                 </option>
                 {unmentored.map((l) => (
                   <option key={l.userId} value={l.userId}>
@@ -297,7 +300,7 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
                   assignMentor.mutate({ learnerUserId: Number(assignId), mentorUserId: mentorId })
                 }
               >
-                Assign
+                {t("adminMentorDetail.assign")}
               </Button>
             </div>
           </Card>
@@ -307,8 +310,8 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
           ) : (mentees.data?.rows.length ?? 0) === 0 ? (
             <EmptyState
               icon={UserPlus}
-              title="No learners yet"
-              description="Assign learners to this mentor with the selector above."
+              title={t("adminMentorDetail.noLearnersTitle")}
+              description={t("adminMentorDetail.noLearnersDesc")}
             />
           ) : (
             <Card className="divide-y divide-gray-100">
@@ -318,7 +321,10 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium text-navy-900">{l.name ?? l.email}</div>
                     <div className="text-xs text-ink/50">
-                      {l.assignedCount} path{l.assignedCount === 1 ? "" : "s"} · {l.avgProgress}%
+                      {l.assignedCount === 1
+                        ? t("adminMentorDetail.pathCountOne", { n: l.assignedCount })
+                        : t("adminMentorDetail.pathCount", { n: l.assignedCount })}{" "}
+                      · {l.avgProgress}%
                     </div>
                   </div>
                   <div className="hidden w-28 sm:block">
@@ -328,14 +334,14 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
                     to={`/mentor/${l.userId}`}
                     className="inline-flex items-center gap-0.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-navy/70 transition hover:bg-gray-50"
                   >
-                    Profile <ChevronRight className="h-3.5 w-3.5" />
+                    {t("adminMentorDetail.profile")} <ChevronRight className="h-3.5 w-3.5" />
                   </Link>
                   <button
                     onClick={() =>
                       unassignMentor.mutate({ learnerUserId: l.userId, mentorUserId: mentorId })
                     }
                     className="rounded-lg border border-gray-200 p-1.5 text-ink/50 transition hover:bg-red-50 hover:text-red-600"
-                    aria-label="Remove from this mentor"
+                    aria-label={t("adminMentorDetail.removeAria")}
                   >
                     <UserMinus className="h-3.5 w-3.5" />
                   </button>
@@ -351,8 +357,8 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
         (authored.length === 0 ? (
           <EmptyState
             icon={RouteIcon}
-            title="No paths authored"
-            description="Paths this mentor creates will appear here."
+            title={t("adminMentorDetail.noPathsTitle")}
+            description={t("adminMentorDetail.noPathsDesc")}
           />
         ) : (
           <div className="space-y-3">
@@ -362,8 +368,10 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold text-navy-900">{p.title}</div>
                     <div className="text-xs text-ink/50">
-                      {p.skillCount} skill{p.skillCount === 1 ? "" : "s"} · {p.enrolledCount}{" "}
-                      enrolled
+                      {p.skillCount === 1
+                        ? t("adminMentorDetail.skillCountOne", { n: p.skillCount })
+                        : t("adminMentorDetail.skillCount", { n: p.skillCount })}{" "}
+                      · {t("adminMentorDetail.enrolled", { n: p.enrolledCount })}
                     </div>
                   </div>
                   <div className="hidden w-28 sm:block">
@@ -384,8 +392,8 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
         ) : (sessions.data?.length ?? 0) === 0 ? (
           <EmptyState
             icon={CalendarClock}
-            title="No upcoming sessions"
-            description="This mentor's scheduled sessions will appear here."
+            title={t("adminMentorDetail.noSessionsTitle")}
+            description={t("adminMentorDetail.noSessionsDesc")}
           />
         ) : (
           <Card className="divide-y divide-gray-100">
@@ -397,8 +405,11 @@ export default function AdminMentorDetail({ mentorId }: { mentorId: number }) {
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-navy-900">{s.title}</div>
                   <div className="text-xs text-ink/50">
-                    with {s.learnerName ?? s.learnerEmail} · {fmtWhen(s.scheduledAt)} ·{" "}
-                    {s.durationMinutes}m
+                    {t("adminMentorDetail.sessionWith", {
+                      name: s.learnerName ?? s.learnerEmail ?? "",
+                    })}{" "}
+                    · {fmtWhen(s.scheduledAt)} ·{" "}
+                    {t("adminMentorDetail.duration", { n: s.durationMinutes })}
                   </div>
                 </div>
               </div>

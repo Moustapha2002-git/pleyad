@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { Button, Card, TextInput } from "./ui";
 
 type Q = { prompt: string; options: string[]; correctIndex: number };
@@ -13,6 +14,7 @@ export function QuizBuilder({
   learnerId: number;
   onCreated: () => void;
 }) {
+  const { t } = useT();
   const [title, setTitle] = useState("");
   const [questions, setQuestions] = useState<Q[]>([emptyQ()]);
   const create = trpc.quizzes.create.useMutation({
@@ -62,16 +64,18 @@ export function QuizBuilder({
       <TextInput
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="Quiz title (e.g. JavaScript Basics)"
+        placeholder={t("quizBuilder.titlePlaceholder")}
       />
       {questions.map((q, qi) => (
         <Card key={qi} className="space-y-2 p-4">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-ink/40">Q{qi + 1}</span>
+            <span className="text-xs font-semibold text-ink/40">
+              {t("quizBuilder.questionNum", { n: qi + 1 })}
+            </span>
             <TextInput
               value={q.prompt}
               onChange={(e) => update(qi, { prompt: e.target.value })}
-              placeholder="Question"
+              placeholder={t("quizBuilder.questionPlaceholder")}
               className="flex-1"
             />
             {questions.length > 1 && (
@@ -79,7 +83,7 @@ export function QuizBuilder({
                 type="button"
                 onClick={() => removeQuestion(qi)}
                 className="rounded-lg border border-gray-200 p-2 text-ink/50 hover:bg-gray-50"
-                aria-label="Remove question"
+                aria-label={t("quizBuilder.removeQuestion")}
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -97,7 +101,7 @@ export function QuizBuilder({
               <TextInput
                 value={o}
                 onChange={(e) => setOption(qi, oi, e.target.value)}
-                placeholder={`Option ${oi + 1}`}
+                placeholder={t("quizBuilder.optionPlaceholder", { n: oi + 1 })}
                 className="flex-1"
               />
             </label>
@@ -108,10 +112,10 @@ export function QuizBuilder({
               onClick={() => addOption(qi)}
               className="text-sm text-navy/60 transition hover:text-navy"
             >
-              + Add option
+              {t("quizBuilder.addOption")}
             </button>
           )}
-          <p className="text-xs text-ink/40">Select the radio next to the correct answer.</p>
+          <p className="text-xs text-ink/40">{t("quizBuilder.hint")}</p>
         </Card>
       ))}
       <div className="flex gap-2">
@@ -121,10 +125,10 @@ export function QuizBuilder({
           icon={Plus}
           onClick={() => setQuestions((qs) => [...qs, emptyQ()])}
         >
-          Add question
+          {t("quizBuilder.addQuestion")}
         </Button>
         <Button type="button" onClick={submit} disabled={create.isPending}>
-          Create quiz
+          {t("quizBuilder.createQuiz")}
         </Button>
       </div>
     </div>

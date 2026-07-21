@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { Copy, Download, Link2, Upload, X } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { useToast } from "./Toast";
 import { Badge, Button, Card, Select, Textarea, cn } from "./ui";
 
 type Role = "member" | "mentor" | "admin";
-const ROLE_LABEL: Record<string, string> = { member: "Learner", mentor: "Mentor", admin: "Admin" };
 
 type ImportResult = {
   email: string;
@@ -38,6 +38,7 @@ export function InviteAndImport({
 }: {
   mentors: { userId: number; name: string | null; email: string | null }[];
 }) {
+  const { t } = useT();
   const utils = trpc.useUtils();
   const toast = useToast();
 
@@ -47,14 +48,14 @@ export function InviteAndImport({
   const createInvite = trpc.admin.createInvite.useMutation({
     onSuccess: () => {
       utils.admin.listInvites.invalidate();
-      toast.success("Join link created");
+      toast.success(t("invite.linkCreated"));
     },
     onError: (e) => toast.error(e.message),
   });
   const revokeInvite = trpc.admin.revokeInvite.useMutation({
     onSuccess: () => {
       utils.admin.listInvites.invalidate();
-      toast.info("Join link revoked");
+      toast.info(t("invite.linkRevoked"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -62,7 +63,7 @@ export function InviteAndImport({
   const linkFor = (token: string) => `${window.location.origin}/register?invite=${token}`;
   const copy = async (token: string) => {
     await navigator.clipboard.writeText(linkFor(token));
-    toast.success("Link copied — share it with your cohort");
+    toast.success(t("invite.linkCopied"));
   };
 
   // ── Bulk import ─────────────────────────────────────────────────────────
@@ -76,7 +77,7 @@ export function InviteAndImport({
       setCsv("");
       utils.admin.members.invalidate();
       const created = res.results.filter((r) => r.status === "created").length;
-      toast.success(`Imported ${res.results.length} learners (${created} new accounts)`);
+      toast.success(t("invite.imported", { n: res.results.length, created }));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -99,11 +100,9 @@ export function InviteAndImport({
   return (
     <Card className="p-6">
       <h2 className="mb-1 flex items-center gap-2 text-base font-semibold text-navy-900">
-        <Link2 className="h-4 w-4" /> Invite & bulk import
+        <Link2 className="h-4 w-4" /> {t("invite.title")}
       </h2>
-      <p className="mb-5 text-sm text-ink/55">
-        Share a join link, or import a whole cohort from a list — no email server needed.
-      </p>
+      <p className="mb-5 text-sm text-ink/55">{t("invite.subtitle")}</p>
 
       {/* Join links */}
       <div className="space-y-2">
@@ -112,20 +111,20 @@ export function InviteAndImport({
             key={inv.id}
             className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 p-3"
           >
-            <Badge>{ROLE_LABEL[inv.role] ?? inv.role}</Badge>
+            <Badge>{t(`roles.${inv.role}`)}</Badge>
             <code className="min-w-0 flex-1 truncate text-xs text-ink/60">{linkFor(inv.token)}</code>
-            <span className="text-xs text-ink/40">used {inv.usedCount}×</span>
+            <span className="text-xs text-ink/40">{t("invite.used", { n: inv.usedCount })}</span>
             <button
               onClick={() => copy(inv.token)}
               className="rounded-lg border border-gray-200 p-2 text-ink/60 transition hover:bg-gray-50"
-              aria-label="Copy link"
+              aria-label={t("invite.copyLink")}
             >
               <Copy className="h-4 w-4" />
             </button>
             <button
               onClick={() => revokeInvite.mutate({ inviteId: inv.id })}
               className="rounded-lg border border-gray-200 p-2 text-ink/50 transition hover:bg-gray-50"
-              aria-label="Revoke link"
+              aria-label={t("invite.revokeLink")}
             >
               <X className="h-4 w-4" />
             </button>
@@ -133,9 +132,9 @@ export function InviteAndImport({
         ))}
         <div className="flex items-center gap-2">
           <Select value={newRole} onChange={(e) => setNewRole(e.target.value as Role)}>
-            <option value="member">Learner link</option>
-            <option value="mentor">Mentor link</option>
-            <option value="admin">Admin link</option>
+            <option value="member">{t("invite.learnerLink")}</option>
+            <option value="mentor">{t("invite.mentorLink")}</option>
+            <option value="admin">{t("invite.adminLink")}</option>
           </Select>
           <Button
             variant="secondary"
@@ -143,7 +142,7 @@ export function InviteAndImport({
             onClick={() => createInvite.mutate({ role: newRole })}
             disabled={createInvite.isPending}
           >
-            New join link
+            {t("invite.newJoinLink")}
           </Button>
         </div>
       </div>
@@ -151,20 +150,20 @@ export function InviteAndImport({
       {/* Bulk import */}
       <div className="mt-6 border-t border-gray-100 pt-5">
         <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-navy-900">
-          <Upload className="h-4 w-4" /> Import a cohort (CSV)
+          <Upload className="h-4 w-4" /> {t("invite.importTitle")}
         </h3>
         <Textarea
           value={csv}
           onChange={(e) => setCsv(e.target.value)}
           rows={5}
-          placeholder={"One learner per line:\nAminata Ba, aminata@example.com\nOmar Kane, omar@example.com"}
+          placeholder={t("invite.csvPlaceholder")}
         />
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Select value={mentorId} onChange={(e) => setMentorId(e.target.value)}>
-            <option value="">No mentor (assign later)</option>
+            <option value="">{t("invite.noMentorOption")}</option>
             {mentors.map((m) => (
               <option key={m.userId} value={m.userId}>
-                Mentor for all: {m.name ?? m.email}
+                {t("invite.mentorForAll", { name: m.name ?? m.email ?? "" })}
               </option>
             ))}
           </Select>
@@ -179,13 +178,18 @@ export function InviteAndImport({
             disabled={parsed.rows.length === 0 || bulkImport.isPending}
           >
             {bulkImport.isPending
-              ? "Importing…"
-              : `Import ${parsed.rows.length > 0 ? parsed.rows.length : ""} learner${parsed.rows.length === 1 ? "" : "s"}`}
+              ? t("invite.importing")
+              : parsed.rows.length === 0
+                ? t("invite.importEmpty")
+                : parsed.rows.length === 1
+                  ? t("invite.importOne", { n: parsed.rows.length })
+                  : t("invite.importN", { n: parsed.rows.length })}
           </Button>
           {parsed.bad.length > 0 && (
             <span className="text-xs text-red-600">
-              {parsed.bad.length} line{parsed.bad.length === 1 ? "" : "s"} without a valid email
-              skipped
+              {parsed.bad.length === 1
+                ? t("invite.badLinesOne", { n: parsed.bad.length })
+                : t("invite.badLines", { n: parsed.bad.length })}
             </span>
           )}
         </div>
@@ -193,11 +197,9 @@ export function InviteAndImport({
         {results && (
           <div className="mt-4 rounded-xl border border-gold/40 bg-gold/10 p-4">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-navy-900">
-                Import complete — credentials are shown once. Download and share them securely.
-              </p>
+              <p className="text-sm font-semibold text-navy-900">{t("invite.importComplete")}</p>
               <Button variant="secondary" icon={Download} onClick={downloadCredentials}>
-                Download CSV
+                {t("invite.downloadCsv")}
               </Button>
             </div>
             <div className="max-h-56 space-y-1 overflow-y-auto">
@@ -218,7 +220,9 @@ export function InviteAndImport({
                           : "bg-emerald-500/12 text-emerald-700",
                       )}
                     >
-                      {r.status === "already_member" ? "already a member" : "existing account added"}
+                      {r.status === "already_member"
+                        ? t("invite.alreadyMember")
+                        : t("invite.existingAdded")}
                     </span>
                   )}
                 </div>

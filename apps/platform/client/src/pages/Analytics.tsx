@@ -1,14 +1,17 @@
 import { AlertTriangle, Users, Activity, TrendingUp, ShieldAlert } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { DimensionGauges } from "../components/DimensionGauges";
 import { Avatar, Badge, Card, EmptyState, PageHeader, ProgressBar, Spinner } from "../components/ui";
 
 const REASON = {
-  overdue: { label: "Overdue", badge: "bg-red-500/12 text-red-600" },
-  not_started: { label: "Not started", badge: "bg-amber-500/15 text-amber-600" },
-  inactive: { label: "Inactive 7d+", badge: "bg-gray-500/12 text-gray-500" },
-} satisfies Record<string, { label: string; badge: string }>;
+  overdue: { labelKey: "analytics.reasonOverdue", badge: "bg-red-500/12 text-red-600" },
+  not_started: { labelKey: "analytics.reasonNotStarted", badge: "bg-amber-500/15 text-amber-600" },
+  inactive: { labelKey: "analytics.reasonInactive", badge: "bg-gray-500/12 text-gray-500" },
+} satisfies Record<string, { labelKey: string; badge: string }>;
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
 
 function StatCard({
   icon: Icon,
@@ -43,20 +46,40 @@ function StatCard({
 
 function CompletionFunnel({
   funnel,
+  t,
 }: {
   funnel: { notStarted: number; inProgress: number; completed: number; total: number };
+  t: T;
 }) {
   const segments = [
-    { key: "completed", label: "Completed", n: funnel.completed, bar: "bg-emerald-500", dot: "bg-emerald-500" },
-    { key: "inProgress", label: "In progress", n: funnel.inProgress, bar: "bg-gold", dot: "bg-gold" },
-    { key: "notStarted", label: "Not started", n: funnel.notStarted, bar: "bg-gray-300", dot: "bg-gray-300" },
+    {
+      key: "completed",
+      label: t("analytics.segCompleted"),
+      n: funnel.completed,
+      bar: "bg-emerald-500",
+      dot: "bg-emerald-500",
+    },
+    {
+      key: "inProgress",
+      label: t("analytics.segInProgress"),
+      n: funnel.inProgress,
+      bar: "bg-gold",
+      dot: "bg-gold",
+    },
+    {
+      key: "notStarted",
+      label: t("analytics.segNotStarted"),
+      n: funnel.notStarted,
+      bar: "bg-gray-300",
+      dot: "bg-gray-300",
+    },
   ];
   const pct = (n: number) => (funnel.total > 0 ? Math.round((n / funnel.total) * 100) : 0);
   return (
     <Card className="p-6">
       <div className="mb-4 flex items-baseline justify-between">
-        <h2 className="text-base font-semibold text-navy-900">Path completion</h2>
-        <span className="text-sm text-ink/45">{funnel.total} assigned</span>
+        <h2 className="text-base font-semibold text-navy-900">{t("analytics.pathCompletion")}</h2>
+        <span className="text-sm text-ink/45">{t("analytics.assigned", { n: funnel.total })}</span>
       </div>
       <div className="flex h-3 w-full overflow-hidden rounded-full bg-gray-100">
         {segments.map((s) =>
@@ -82,23 +105,24 @@ function CompletionFunnel({
   );
 }
 
-const relativeTime = (d: string | Date | null) => {
-  if (!d) return "no activity yet";
+const relativeTime = (d: string | Date | null, t: T) => {
+  if (!d) return t("analytics.noActivity");
   const days = Math.floor((Date.now() - new Date(d).getTime()) / 86_400_000);
-  if (days <= 0) return "active today";
-  if (days === 1) return "1 day ago";
-  return `${days} days ago`;
+  if (days <= 0) return t("analytics.activeToday");
+  if (days === 1) return t("analytics.oneDayAgo");
+  return t("analytics.daysAgo", { n: days });
 };
 
 export default function Analytics() {
+  const { t } = useT();
   const me = trpc.auth.me.useQuery();
   const overview = trpc.analytics.cohort.useQuery();
-  const orgName = me.data?.activeOrganization?.name ?? "Workspace";
+  const orgName = me.data?.activeOrganization?.name ?? t("analytics.workspaceFallback");
 
   if (overview.isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Spinner label="Crunching cohort data…" />
+        <Spinner label={t("analytics.loading")} />
       </div>
     );
   }
@@ -114,38 +138,43 @@ export default function Analytics() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Analytics" subtitle={`Cohort overview for ${orgName}`} />
+      <PageHeader title={t("analytics.title")} subtitle={t("analytics.subtitle", { org: orgName })} />
 
       {totals.assignedPaths === 0 ? (
         <EmptyState
           icon={TrendingUp}
-          title="No data to chart yet"
-          description="Once learners are assigned learning paths and start making progress, cohort insights will appear here."
+          title={t("analytics.emptyTitle")}
+          description={t("analytics.emptyDesc")}
         />
       ) : (
         <>
           {/* Top-line stats */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard icon={Users} label="Learners" value={totals.learners} hint={`${totals.mentors} mentors`} />
+            <StatCard
+              icon={Users}
+              label={t("analytics.statLearners")}
+              value={totals.learners}
+              hint={t("analytics.hintMentors", { n: totals.mentors })}
+            />
             <StatCard
               icon={Activity}
-              label="Active this week"
+              label={t("analytics.statActive")}
               value={totals.activeLearners}
-              hint={`of ${totals.learners} learners`}
+              hint={t("analytics.hintOfLearners", { n: totals.learners })}
               tone="emerald"
             />
             <StatCard
               icon={TrendingUp}
-              label="Avg. progress"
+              label={t("analytics.statAvgProgress")}
               value={`${totals.avgProgress}%`}
-              hint={`${totals.assignedPaths} assigned paths`}
+              hint={t("analytics.hintAssignedPaths", { n: totals.assignedPaths })}
               tone="gold"
             />
             <StatCard
               icon={ShieldAlert}
-              label="Learners at risk"
+              label={t("analytics.statAtRisk")}
               value={atRisk.length}
-              hint="overdue, stalled or inactive"
+              hint={t("analytics.hintAtRisk")}
               tone={atRisk.length > 0 ? "red" : "navy"}
             />
           </div>
@@ -153,23 +182,21 @@ export default function Analytics() {
           {/* Dimension averages */}
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold">
-              Cohort progress by dimension
+              {t("analytics.byDimension")}
             </h2>
             <DimensionGauges data={gauges} />
           </section>
 
           {/* Funnel */}
-          <CompletionFunnel funnel={funnel} />
+          <CompletionFunnel funnel={funnel} t={t} />
 
           {/* At-risk learners */}
           <section>
             <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-navy-900">
-              <AlertTriangle className="h-4 w-4 text-red-500" /> Needs attention
+              <AlertTriangle className="h-4 w-4 text-red-500" /> {t("analytics.needsAttention")}
             </h2>
             {atRisk.length === 0 ? (
-              <Card className="p-6 text-sm text-ink/55">
-                Everyone's on track — no overdue, stalled, or inactive learners. 🎉
-              </Card>
+              <Card className="p-6 text-sm text-ink/55">{t("analytics.allOnTrack")}</Card>
             ) : (
               <Card className="divide-y divide-gray-100">
                 {atRisk.map((l) => {
@@ -182,12 +209,16 @@ export default function Analytics() {
                           <span className="truncate font-medium text-navy-900">
                             {l.name ?? l.email}
                           </span>
-                          <Badge className={r.badge}>{r.label}</Badge>
+                          <Badge className={r.badge}>{t(r.labelKey)}</Badge>
                         </div>
                         <div className="mt-0.5 text-xs text-ink/50">
-                          {l.assignedCount} path{l.assignedCount === 1 ? "" : "s"}
-                          {l.mentorName ? ` · mentor ${l.mentorName}` : " · no mentor"} ·{" "}
-                          {relativeTime(l.lastActivityAt)}
+                          {l.assignedCount === 1
+                            ? t("analytics.pathCountOne", { n: l.assignedCount })
+                            : t("analytics.pathCount", { n: l.assignedCount })}
+                          {l.mentorName
+                            ? t("analytics.mentorLabel", { name: l.mentorName })
+                            : t("analytics.noMentor")}{" "}
+                          · {relativeTime(l.lastActivityAt, t)}
                         </div>
                       </div>
                       <div className="hidden w-32 sm:block">

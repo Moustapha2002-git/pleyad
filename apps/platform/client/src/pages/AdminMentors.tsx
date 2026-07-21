@@ -12,6 +12,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import {
   Avatar,
   Badge,
@@ -27,19 +28,14 @@ import {
 
 type Sort = "name" | "learners" | "progress" | "sessions";
 
-const ROLE_LABEL: Record<string, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  manager: "Manager",
-  mentor: "Mentor",
-};
+type T = (key: string, vars?: Record<string, string | number>) => string;
 
-const lastSeen = (d: string | Date | null) => {
-  if (!d) return "never signed in";
+const lastSeen = (d: string | Date | null, t: T) => {
+  if (!d) return t("adminMentors.neverSignedIn");
   const days = Math.floor((Date.now() - new Date(d).getTime()) / 86_400_000);
-  if (days <= 0) return "seen today";
-  if (days === 1) return "seen yesterday";
-  return `seen ${days}d ago`;
+  if (days <= 0) return t("adminMentors.seenToday");
+  if (days === 1) return t("adminMentors.seenYesterday");
+  return t("adminMentors.seenDaysAgo", { n: days });
 };
 const fmtSession = (d: string | Date | null) =>
   d
@@ -68,6 +64,7 @@ function Stat({ icon: Icon, value, label, tone = "bg-navy/10 text-navy" }: {
 }
 
 export default function AdminMentors() {
+  const { t } = useT();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<Sort>("name");
   const dir = trpc.admin.mentorsDirectory.useQuery({ search: search || undefined, sort });
@@ -75,27 +72,27 @@ export default function AdminMentors() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mentors" subtitle="Your mentoring staff — workload and impact." />
+      <PageHeader title={t("adminMentors.title")} subtitle={t("adminMentors.subtitle")} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat icon={Users} value={data?.stats.mentors ?? "…"} label="Mentors" />
+        <Stat icon={Users} value={data?.stats.mentors ?? "…"} label={t("adminMentors.statMentors")} />
         <Stat
           icon={UserCheck}
           value={data?.stats.mentoredLearners ?? "…"}
-          label="Learners covered"
+          label={t("adminMentors.statCovered")}
           tone="bg-emerald-500/12 text-emerald-600"
         />
         <Stat
           icon={GraduationCap}
           value={data?.stats.avgLearnersPerMentor ?? "…"}
-          label="Avg learners / mentor"
+          label={t("adminMentors.statAvgPerMentor")}
           tone="bg-dim-knowledge/10 text-dim-knowledge"
         />
         <Stat
           icon={AlertTriangle}
           value={data?.stats.unmentoredLearners ?? "…"}
-          label="Learners without mentor"
+          label={t("adminMentors.statUnmentored")}
           tone={
             (data?.stats.unmentoredLearners ?? 0) > 0
               ? "bg-red-500/12 text-red-600"
@@ -111,15 +108,15 @@ export default function AdminMentors() {
           <TextInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search mentors…"
+            placeholder={t("adminMentors.searchPlaceholder")}
             className="pl-9"
           />
         </div>
         <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
-          <option value="name">Sort: Name</option>
-          <option value="learners">Sort: Most learners</option>
-          <option value="progress">Sort: Cohort progress</option>
-          <option value="sessions">Sort: Upcoming sessions</option>
+          <option value="name">{t("adminMentors.sortName")}</option>
+          <option value="learners">{t("adminMentors.sortLearners")}</option>
+          <option value="progress">{t("adminMentors.sortProgress")}</option>
+          <option value="sessions">{t("adminMentors.sortSessions")}</option>
         </Select>
       </div>
 
@@ -129,8 +126,8 @@ export default function AdminMentors() {
       ) : (data?.rows.length ?? 0) === 0 ? (
         <EmptyState
           icon={Users}
-          title="No mentors match"
-          description="Add mentors from the Admin page, or change the member role to Mentor."
+          title={t("adminMentors.emptyTitle")}
+          description={t("adminMentors.emptyDesc")}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -144,7 +141,7 @@ export default function AdminMentors() {
                       <span className="truncate font-semibold text-navy-900">
                         {m.name ?? m.email}
                       </span>
-                      <Badge>{ROLE_LABEL[m.role] ?? m.role}</Badge>
+                      <Badge>{t(`roles.${m.role}`)}</Badge>
                     </div>
                     <div className="truncate text-xs text-ink/50">
                       {m.profile.headline ?? m.email}
@@ -174,11 +171,11 @@ export default function AdminMentors() {
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-xl bg-gray-50 py-2">
                     <div className="text-lg font-bold text-navy-900">{m.learnerCount}</div>
-                    <div className="text-[10px] text-ink/50">learners</div>
+                    <div className="text-[10px] text-ink/50">{t("adminMentors.learners")}</div>
                   </div>
                   <div className="rounded-xl bg-gray-50 py-2">
                     <div className="text-lg font-bold text-navy-900">{m.pathsAuthored}</div>
-                    <div className="text-[10px] text-ink/50">paths</div>
+                    <div className="text-[10px] text-ink/50">{t("adminMentors.paths")}</div>
                   </div>
                   <div
                     className={cn(
@@ -194,7 +191,7 @@ export default function AdminMentors() {
                     >
                       {m.atRiskCount}
                     </div>
-                    <div className="text-[10px] text-ink/50">at risk</div>
+                    <div className="text-[10px] text-ink/50">{t("adminMentors.atRisk")}</div>
                   </div>
                 </div>
 
@@ -202,16 +199,16 @@ export default function AdminMentors() {
                   <ProgressBar value={m.avgProgress} className="flex-1" />
                   <span className="text-sm font-semibold text-navy-900">{m.avgProgress}%</span>
                 </div>
-                <div className="mt-1 text-[11px] text-ink/45">cohort progress</div>
+                <div className="mt-1 text-[11px] text-ink/45">{t("adminMentors.cohortProgress")}</div>
 
                 <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-gray-100 pt-3 text-xs text-ink/50">
                   <span className="inline-flex items-center gap-1">
                     <CalendarClock className="h-3.5 w-3.5" />
                     {m.upcomingSessions > 0
-                      ? `next ${fmtSession(m.nextSessionAt)}`
-                      : "no sessions planned"}
+                      ? t("adminMentors.nextSession", { when: fmtSession(m.nextSessionAt) ?? "" })
+                      : t("adminMentors.noSessions")}
                   </span>
-                  <span>{lastSeen(m.lastSignedInAt)}</span>
+                  <span>{lastSeen(m.lastSignedInAt, t)}</span>
                 </div>
               </Card>
             </Link>
