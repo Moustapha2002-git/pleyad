@@ -111,7 +111,7 @@ export default function Paths() {
       setDims([]);
       setShowCreate(false);
       await utils.paths.list.invalidate();
-      toast.success("Path created — add its first skill");
+      toast.success(t("learning.pathCreatedToast"));
       navigate(`/paths/${res.id}`);
     },
     onError: (e) => toast.error(e.message),
@@ -124,7 +124,7 @@ export default function Paths() {
     onSuccess: async () => {
       setPlTitle("");
       await utils.playlists.mine.invalidate();
-      toast.success("Playlist created");
+      toast.success(t("learning.playlistCreatedToast"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -227,7 +227,7 @@ export default function Paths() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t("learning.pathTitlePlaceholder")}
-              aria-label="New path title"
+              aria-label={t("a11y.newPathTitle")}
             />
             <div className="flex flex-wrap gap-2">
               {ALL_DIMENSIONS.map((d) => (
@@ -260,7 +260,7 @@ export default function Paths() {
         <>
           {/* ── Continue learning hero ─────────────────────────────── */}
           {hero && (
-            <section aria-label="Continue learning">
+            <section aria-label={t("a11y.continueLearning")}>
               <div className="overflow-hidden rounded-2xl bg-navy-950 text-white shadow-[var(--shadow-pop)]">
                 <div className="flex flex-col sm:flex-row">
                   <div className="relative h-40 w-full shrink-0 sm:h-auto sm:w-72">
@@ -313,7 +313,7 @@ export default function Paths() {
           )}
 
           {/* ── Stats strip ────────────────────────────────────────── */}
-          <section aria-label="Learning statistics" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <section aria-label={t("a11y.learningStats")} className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <StatTile icon={BookOpen} value={stats.total} label={t("learning.statPaths")} />
             <StatTile
               icon={Flame}
@@ -381,14 +381,14 @@ export default function Paths() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={t("learning.searchPlaceholder")}
-                  aria-label="Search paths"
+                  aria-label={t("a11y.searchPaths")}
                   className="pl-9"
                 />
               </div>
               <Select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as Sort)}
-                aria-label="Sort paths"
+                aria-label={t("a11y.sortPaths")}
               >
                 <option value="recent">{t("learning.sortRecent")}</option>
                 <option value="due">{t("learning.sortDue")}</option>
@@ -486,7 +486,7 @@ export default function Paths() {
                     value={plTitle}
                     onChange={(e) => setPlTitle(e.target.value)}
                     placeholder={t("learning.playlistPlaceholder")}
-                    aria-label="New playlist name"
+                    aria-label={t("a11y.newPlaylistName")}
                     className="sm:flex-1"
                   />
                   <Button type="submit" icon={Plus} disabled={createPlaylist.isPending}>

@@ -33,12 +33,12 @@ export function VideoCall({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-3">
       <div className="mb-2 flex items-center justify-between text-white">
-        <span className="text-sm opacity-80">Pleyad video call</span>
+        <span className="text-sm opacity-80">{t("call.videoCallTitle")}</span>
         <button
           onClick={onClose}
           className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-navy transition hover:bg-gray-100"
         >
-          Leave call
+          {t("call.leaveCall")}
         </button>
       </div>
       {src ? (

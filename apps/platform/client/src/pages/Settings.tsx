@@ -92,7 +92,7 @@ export default function Settings() {
     onError: (e) => toast.error(e.message),
   });
 
-  if (me.isLoading) return <Spinner label="Loading…" />;
+  if (me.isLoading) return <Spinner label={t("common.loading")} />;
   if (!me.data) return null;
 
   const nameChanged = name.trim() !== (me.data.name ?? "") && name.trim().length >= 2;

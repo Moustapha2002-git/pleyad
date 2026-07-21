@@ -175,7 +175,7 @@ export default function Dashboard() {
     .sort((a, b) => dueTime(a.dueAt) - dueTime(b.dueAt));
   const inProgressCount = learnerPaths.filter((p) => p.progress > 0 && p.progress < 100).length;
 
-  if (me.isLoading) return <Spinner label="Loading…" />;
+  if (me.isLoading) return <Spinner label={t("common.loading")} />;
 
   return (
     <div className="space-y-8">
@@ -196,7 +196,7 @@ export default function Dashboard() {
 
       {/* Continue where you left off — one click into the workspace */}
       {continuePath && (
-        <section aria-label="Continue learning">
+        <section aria-label={t("a11y.continueLearning")}>
           <div className="overflow-hidden rounded-2xl bg-navy-950 text-white shadow-[var(--shadow-pop)]">
             <div className="flex flex-col sm:flex-row">
               <div className="relative h-36 w-full shrink-0 sm:h-auto sm:w-64">
@@ -305,7 +305,7 @@ export default function Dashboard() {
         {progression.data ? (
           <DimensionGauges data={progression.data} />
         ) : (
-          <Spinner label="Loading…" />
+          <Spinner label={t("common.loading")} />
         )}
       </section>
 
