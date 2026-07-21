@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { useToast } from "../components/Toast";
 import { DimensionGauges } from "../components/DimensionGauges";
 import { VideoCall } from "../components/VideoCall";
@@ -36,16 +37,17 @@ function dueLabel(dueAt: string | Date | null) {
 }
 
 const TABS = [
-  { key: "overview", label: "Overview" },
-  { key: "paths", label: "Paths" },
-  { key: "tasks", label: "Tasks" },
-  { key: "feedback", label: "Feedback" },
-  { key: "quizzes", label: "Quizzes" },
-  { key: "messages", label: "Messages" },
+  { key: "overview", labelKey: "tabOverview" },
+  { key: "paths", labelKey: "tabPaths" },
+  { key: "tasks", labelKey: "tabTasks" },
+  { key: "feedback", labelKey: "tabFeedback" },
+  { key: "quizzes", labelKey: "tabQuizzes" },
+  { key: "messages", labelKey: "tabMessages" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
 export default function LearnerProfile({ learnerId }: { learnerId: number }) {
+  const { t } = useT();
   const me = trpc.auth.me.useQuery();
   const profile = trpc.mentor.learnerProfile.useQuery({ learnerId });
   const orgPaths = trpc.paths.list.useQuery();
@@ -60,14 +62,14 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
   const [inCall, setInCall] = useState(false);
 
   // Scheduling
-  const [sessTitle, setSessTitle] = useState("Mentoring session");
+  const [sessTitle, setSessTitle] = useState(t("learnerProfile.defaultSessionTitle"));
   const [sessWhen, setSessWhen] = useState("");
   const [sessDuration, setSessDuration] = useState(30);
   const schedule = trpc.sessions.schedule.useMutation({
     onSuccess: () => {
       setSessWhen("");
       utils.sessions.mine.invalidate();
-      toast.success("Session scheduled");
+      toast.success(t("learnerProfile.sessionScheduled"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -83,14 +85,14 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
       setAssignPathId("");
       setAssignDue("");
       refreshAssignments();
-      toast.success("Path assigned");
+      toast.success(t("learnerProfile.pathAssigned"));
     },
     onError: (e) => toast.error(e.message),
   });
   const unassignPath = trpc.paths.unassign.useMutation({
     onSuccess: () => {
       refreshAssignments();
-      toast.info("Path unassigned");
+      toast.info(t("learnerProfile.pathUnassigned"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -108,14 +110,14 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
       setTaskInstr("");
       setTaskDue("");
       utils.coaching.tasksFor.invalidate({ learnerUserId: learnerId });
-      toast.success("Task added");
+      toast.success(t("learnerProfile.taskAdded"));
     },
     onError: (e) => toast.error(e.message),
   });
   const deleteTask = trpc.coaching.deleteTask.useMutation({
     onSuccess: () => {
       utils.coaching.tasksFor.invalidate({ learnerUserId: learnerId });
-      toast.info("Task deleted");
+      toast.info(t("learnerProfile.taskDeleted"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -123,7 +125,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
     onSuccess: () => {
       setFbBody("");
       utils.coaching.feedbackFor.invalidate({ learnerUserId: learnerId });
-      toast.success("Feedback sent");
+      toast.success(t("learnerProfile.feedbackSent"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -134,7 +136,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
   const deleteQuiz = trpc.quizzes.delete.useMutation({
     onSuccess: () => {
       utils.quizzes.forLearner.invalidate({ learnerUserId: learnerId });
-      toast.info("Quiz deleted");
+      toast.info(t("learnerProfile.quizDeleted"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -151,17 +153,17 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
     setInCall(false);
   };
 
-  if (profile.isLoading) return <Spinner label="Loading…" />;
-  if (!profile.data) return <p className="text-ink/50">Not found.</p>;
+  if (profile.isLoading) return <Spinner label={t("common.loading")} />;
+  if (!profile.data) return <p className="text-ink/50">{t("learnerProfile.notFound")}</p>;
   const p = profile.data;
-  const name = p.learner.name ?? p.learner.email ?? "Learner";
+  const name = p.learner.name ?? p.learner.email ?? t("learnerProfile.learnerFallback");
 
   const assignedPaths = assigned.data ?? [];
   const assignedIds = new Set(assignedPaths.map((a) => a.id));
   const available = (orgPaths.data ?? []).filter((op) => !assignedIds.has(op.id));
 
   // Small badges on the tab labels (open tasks, unread etc.)
-  const openTasks = (tasks.data ?? []).filter((t) => t.status !== "done").length;
+  const openTasks = (tasks.data ?? []).filter((task) => task.status !== "done").length;
   const tabCount: Partial<Record<Tab, number>> = {
     paths: assignedPaths.length,
     tasks: openTasks,
@@ -174,7 +176,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
         to="/mentor"
         className="inline-flex items-center gap-1 text-sm text-navy/60 transition hover:text-navy"
       >
-        <ArrowLeft className="h-4 w-4" /> My learners
+        <ArrowLeft className="h-4 w-4" /> {t("learnerProfile.back")}
       </Link>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -186,27 +188,27 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
           </div>
         </div>
         <Button icon={Video} onClick={startCall}>
-          Video call
+          {t("learnerProfile.videoCall")}
         </Button>
       </div>
 
       {inCall && me.data && (
         <VideoCall
           room={room}
-          displayName={me.data.name ?? me.data.email ?? "Mentor"}
+          displayName={me.data.name ?? me.data.email ?? t("learnerProfile.mentorFallback")}
           onClose={endCall}
         />
       )}
 
       {/* Tab bar */}
       <div className="flex flex-wrap gap-1 border-b border-gray-200">
-        {TABS.map((t) => {
-          const active = tab === t.key;
-          const count = tabCount[t.key];
+        {TABS.map((tb) => {
+          const active = tab === tb.key;
+          const count = tabCount[tb.key];
           return (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
+              key={tb.key}
+              onClick={() => setTab(tb.key)}
               className={cn(
                 "-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-sm font-medium transition",
                 active
@@ -214,7 +216,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
                   : "border-transparent text-ink/55 hover:text-navy",
               )}
             >
-              {t.label}
+              {t(`learnerProfile.${tb.labelKey}`)}
               {count != null && count > 0 && (
                 <span
                   className={cn(
@@ -237,7 +239,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
           <Card className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4">
             {[
               {
-                label: "Registered",
+                label: t("learnerProfile.registered"),
                 value: new Date(p.learner.registeredAt).toLocaleDateString(undefined, {
                   month: "short",
                   day: "numeric",
@@ -245,16 +247,16 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
                 }),
               },
               {
-                label: "Last sign-in",
+                label: t("learnerProfile.lastSignIn"),
                 value: p.learner.lastSignedInAt
                   ? new Date(p.learner.lastSignedInAt).toLocaleDateString(undefined, {
                       month: "short",
                       day: "numeric",
                     })
-                  : "Never",
+                  : t("learnerProfile.never"),
               },
               {
-                label: "Joined workspace",
+                label: t("learnerProfile.joinedWorkspace"),
                 value: p.learner.joinedAt
                   ? new Date(p.learner.joinedAt).toLocaleDateString(undefined, {
                       month: "short",
@@ -264,12 +266,12 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
                   : "—",
               },
               {
-                label: "Status",
+                label: t("learnerProfile.status"),
                 value:
                   p.learner.membershipStatus === "suspended"
-                    ? "Suspended"
+                    ? t("learnerProfile.suspended")
                     : p.learner.membershipStatus === "active"
-                      ? "Active"
+                      ? t("learnerProfile.active")
                       : (p.learner.membershipStatus ?? "—"),
               },
             ].map((f) => (
@@ -279,7 +281,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
                 </div>
                 <div
                   className={
-                    f.value === "Suspended"
+                    f.value === t("learnerProfile.suspended")
                       ? "mt-0.5 text-sm font-semibold text-red-600"
                       : "mt-0.5 text-sm font-semibold text-navy-900"
                   }
@@ -292,14 +294,14 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
 
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold">
-              Progress CV
+              {t("learnerProfile.progressCV")}
             </h2>
             <DimensionGauges data={p.progression} />
           </section>
 
           <Card className="p-6">
             <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
-              <CalendarPlus className="h-4 w-4" /> Schedule a session
+              <CalendarPlus className="h-4 w-4" /> {t("learnerProfile.scheduleSession")}
             </h2>
             <form
               onSubmit={(e) => {
@@ -307,7 +309,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
                 if (sessWhen)
                   schedule.mutate({
                     learnerUserId: learnerId,
-                    title: sessTitle.trim() || "Mentoring session",
+                    title: sessTitle.trim() || t("learnerProfile.defaultSessionTitle"),
                     scheduledAt: sessWhen,
                     durationMinutes: sessDuration,
                   });
@@ -315,11 +317,11 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
               className="flex flex-col gap-3 sm:flex-row sm:items-end"
             >
               <label className="flex-1 text-sm">
-                <span className="mb-1 block font-medium text-ink/80">Title</span>
+                <span className="mb-1 block font-medium text-ink/80">{t("learnerProfile.fieldTitle")}</span>
                 <TextInput value={sessTitle} onChange={(e) => setSessTitle(e.target.value)} />
               </label>
               <label className="text-sm">
-                <span className="mb-1 block font-medium text-ink/80">When</span>
+                <span className="mb-1 block font-medium text-ink/80">{t("learnerProfile.fieldWhen")}</span>
                 <TextInput
                   type="datetime-local"
                   value={sessWhen}
@@ -327,7 +329,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
                 />
               </label>
               <label className="text-sm">
-                <span className="mb-1 block font-medium text-ink/80">Minutes</span>
+                <span className="mb-1 block font-medium text-ink/80">{t("learnerProfile.fieldMinutes")}</span>
                 <Select
                   value={String(sessDuration)}
                   onChange={(e) => setSessDuration(Number(e.target.value))}
@@ -339,7 +341,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
                 </Select>
               </label>
               <Button type="submit" disabled={schedule.isPending || !sessWhen}>
-                Schedule
+                {t("learnerProfile.scheduleBtn")}
               </Button>
             </form>
           </Card>
@@ -350,7 +352,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
       {tab === "paths" && (
         <Card className="p-6">
           <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
-            <ClipboardList className="h-4 w-4" /> Assigned learning paths
+            <ClipboardList className="h-4 w-4" /> {t("learnerProfile.assignedPaths")}
           </h2>
 
           {assignedPaths.length > 0 ? (
@@ -365,7 +367,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
                       <span className="font-medium text-navy-900">{path.title}</span>
                       {dueLabel(path.dueAt) && (
                         <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
-                          Due {dueLabel(path.dueAt)}
+                          {t("learnerProfile.due", { date: dueLabel(path.dueAt) ?? "" })}
                         </span>
                       )}
                     </div>
@@ -377,7 +379,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
                       unassignPath.mutate({ collectionId: path.id, learnerUserId: learnerId })
                     }
                     className="rounded-lg border border-gray-200 p-2 text-ink/50 transition hover:bg-gray-50"
-                    aria-label="Unassign"
+                    aria-label={t("learnerProfile.unassign")}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -385,7 +387,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
               ))}
             </div>
           ) : (
-            <p className="mb-4 text-sm text-ink/50">No paths assigned yet.</p>
+            <p className="mb-4 text-sm text-ink/50">{t("learnerProfile.noPathsAssigned")}</p>
           )}
 
           <form
@@ -401,13 +403,13 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
             className="flex flex-col gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:items-end"
           >
             <label className="flex-1 text-sm">
-              <span className="mb-1 block font-medium text-ink/80">Assign a path</span>
+              <span className="mb-1 block font-medium text-ink/80">{t("learnerProfile.assignAPath")}</span>
               <Select
                 value={assignPathId}
                 onChange={(e) => setAssignPathId(e.target.value)}
                 className="w-full"
               >
-                <option value="">Choose a path…</option>
+                <option value="">{t("learnerProfile.choosePath")}</option>
                 {available.map((op) => (
                   <option key={op.id} value={op.id}>
                     {op.title}
@@ -416,7 +418,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
               </Select>
             </label>
             <label className="text-sm">
-              <span className="mb-1 block font-medium text-ink/80">Due (optional)</span>
+              <span className="mb-1 block font-medium text-ink/80">{t("learnerProfile.dueOptional")}</span>
               <TextInput
                 type="date"
                 value={assignDue}
@@ -424,7 +426,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
               />
             </label>
             <Button type="submit" disabled={!assignPathId || assignPath.isPending}>
-              Assign
+              {t("learnerProfile.assign")}
             </Button>
           </form>
         </Card>
@@ -434,44 +436,44 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
       {tab === "tasks" && (
         <Card className="p-6">
           <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
-            <ClipboardCheck className="h-4 w-4" /> Tasks & exercises
+            <ClipboardCheck className="h-4 w-4" /> {t("learnerProfile.tasksTitle")}
           </h2>
           {tasks.data && tasks.data.length > 0 ? (
             <div className="mb-4 space-y-2">
-              {tasks.data.map((t) => (
+              {tasks.data.map((task) => (
                 <div
-                  key={t.id}
+                  key={task.id}
                   className="flex items-start gap-3 rounded-xl border border-gray-100 p-3"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span
                         className={
-                          t.status === "done"
+                          task.status === "done"
                             ? "font-medium text-ink/40 line-through"
                             : "font-medium text-navy-900"
                         }
                       >
-                        {t.title}
+                        {task.title}
                       </span>
-                      {t.status === "done" ? (
+                      {task.status === "done" ? (
                         <span className="rounded-full bg-dim-skills/10 px-2 py-0.5 text-xs font-medium text-dim-skills">
-                          Done
+                          {t("learnerProfile.doneBadge")}
                         </span>
-                      ) : dueLabel(t.dueAt) ? (
+                      ) : dueLabel(task.dueAt) ? (
                         <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
-                          Due {dueLabel(t.dueAt)}
+                          {t("learnerProfile.due", { date: dueLabel(task.dueAt) ?? "" })}
                         </span>
                       ) : null}
                     </div>
-                    {t.instructions && (
-                      <p className="mt-1 text-sm text-ink/60">{t.instructions}</p>
+                    {task.instructions && (
+                      <p className="mt-1 text-sm text-ink/60">{task.instructions}</p>
                     )}
                   </div>
                   <button
-                    onClick={() => deleteTask.mutate({ taskId: t.id })}
+                    onClick={() => deleteTask.mutate({ taskId: task.id })}
                     className="rounded-lg border border-gray-200 p-2 text-ink/50 transition hover:bg-gray-50"
-                    aria-label="Delete task"
+                    aria-label={t("learnerProfile.deleteTask")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -479,7 +481,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
               ))}
             </div>
           ) : (
-            <p className="mb-4 text-sm text-ink/50">No tasks yet.</p>
+            <p className="mb-4 text-sm text-ink/50">{t("learnerProfile.noTasks")}</p>
           )}
           <form
             onSubmit={(e) => {
@@ -498,7 +500,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
               <TextInput
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
-                placeholder="Task title (e.g. Build a to-do app)"
+                placeholder={t("learnerProfile.taskPlaceholder")}
                 className="min-w-0 sm:flex-1"
               />
               <TextInput
@@ -511,11 +513,11 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
             <Textarea
               value={taskInstr}
               onChange={(e) => setTaskInstr(e.target.value)}
-              placeholder="Instructions (optional)"
+              placeholder={t("learnerProfile.instructionsPlaceholder")}
               rows={2}
             />
             <Button type="submit" disabled={!taskTitle.trim() || createTask.isPending}>
-              Add task
+              {t("learnerProfile.addTask")}
             </Button>
           </form>
         </Card>
@@ -525,7 +527,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
       {tab === "feedback" && (
         <Card className="p-6">
           <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
-            <MessageSquareQuote className="h-4 w-4" /> Feedback
+            <MessageSquareQuote className="h-4 w-4" /> {t("learnerProfile.feedbackTitle")}
           </h2>
           {feedback.data && feedback.data.length > 0 ? (
             <div className="mb-4 space-y-2">
@@ -539,7 +541,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
               ))}
             </div>
           ) : (
-            <p className="mb-4 text-sm text-ink/50">No feedback yet.</p>
+            <p className="mb-4 text-sm text-ink/50">{t("learnerProfile.noFeedback")}</p>
           )}
           <form
             onSubmit={(e) => {
@@ -552,11 +554,11 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
             <Textarea
               value={fbBody}
               onChange={(e) => setFbBody(e.target.value)}
-              placeholder="Write official feedback for this learner…"
+              placeholder={t("learnerProfile.feedbackPlaceholder")}
               rows={3}
             />
             <Button type="submit" disabled={!fbBody.trim() || addFeedback.isPending}>
-              Give feedback
+              {t("learnerProfile.giveFeedback")}
             </Button>
           </form>
         </Card>
@@ -567,10 +569,10 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
         <Card className="p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-base font-semibold text-navy-900">
-              <ListChecks className="h-4 w-4" /> Quizzes
+              <ListChecks className="h-4 w-4" /> {t("learnerProfile.quizzesTitle")}
             </h2>
             <Button variant="secondary" onClick={() => setShowQuiz((s) => !s)}>
-              {showQuiz ? "Close" : "New quiz"}
+              {showQuiz ? t("common.close") : t("learnerProfile.newQuiz")}
             </Button>
           </div>
           {showQuiz && (
@@ -594,22 +596,24 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
                   <div className="min-w-0 flex-1">
                     <span className="font-medium text-navy-900">{q.title}</span>
                     <span className="ml-2 text-sm text-ink/50">
-                      {q.questionCount} question{q.questionCount === 1 ? "" : "s"}
+                      {q.questionCount === 1
+                        ? t("learnerProfile.question", { n: q.questionCount })
+                        : t("learnerProfile.questions", { n: q.questionCount })}
                     </span>
                   </div>
                   {q.taken ? (
                     <span className="rounded-full bg-dim-skills/10 px-2 py-0.5 text-xs font-medium text-dim-skills">
-                      Score {q.score}%
+                      {t("learnerProfile.score", { n: q.score ?? 0 })}
                     </span>
                   ) : (
                     <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-ink/50">
-                      Not taken
+                      {t("learnerProfile.notTaken")}
                     </span>
                   )}
                   <button
                     onClick={() => deleteQuiz.mutate({ quizId: q.id })}
                     className="rounded-lg border border-gray-200 p-2 text-ink/50 transition hover:bg-gray-50"
-                    aria-label="Delete quiz"
+                    aria-label={t("learnerProfile.deleteQuiz")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -617,7 +621,7 @@ export default function LearnerProfile({ learnerId }: { learnerId: number }) {
               ))}
             </div>
           ) : (
-            !showQuiz && <p className="text-sm text-ink/50">No quizzes yet.</p>
+            !showQuiz && <p className="text-sm text-ink/50">{t("learnerProfile.noQuizzes")}</p>
           )}
         </Card>
       )}

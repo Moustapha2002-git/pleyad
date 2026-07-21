@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { useToast } from "../components/Toast";
 import {
   Avatar,
@@ -23,17 +24,22 @@ import {
 } from "../components/ui";
 
 const ALL_DIMENSIONS = [
-  { key: "knowledge", label: "Knowledge" },
-  { key: "skills", label: "Skills" },
-  { key: "human_development", label: "Human Development" },
+  { key: "knowledge" },
+  { key: "skills" },
+  { key: "human_development" },
 ] as const;
 type Dim = (typeof ALL_DIMENSIONS)[number]["key"];
 
-const RISK: Record<string, { label: string; badge: string }> = {
-  overdue: { label: "Overdue", badge: "bg-red-500/12 text-red-600" },
-  not_started: { label: "Not started", badge: "bg-amber-500/15 text-amber-600" },
-  inactive: { label: "Inactive 7d+", badge: "bg-gray-500/12 text-gray-500" },
+const RISK: Record<string, { labelKey: string; badge: string }> = {
+  overdue: { labelKey: "mentorLearners.riskOverdue", badge: "bg-red-500/12 text-red-600" },
+  not_started: {
+    labelKey: "mentorLearners.riskNotStarted",
+    badge: "bg-amber-500/15 text-amber-600",
+  },
+  inactive: { labelKey: "mentorLearners.riskInactive", badge: "bg-gray-500/12 text-gray-500" },
 };
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
 
 const isToday = (d: Date | string | null) => {
   if (!d) return false;
@@ -42,19 +48,19 @@ const isToday = (d: Date | string | null) => {
   return x.toDateString() === n.toDateString();
 };
 
-const lastActive = (d: Date | string | null) => {
-  if (!d) return "no activity yet";
+const lastActive = (d: Date | string | null, t: T) => {
+  if (!d) return t("mentorLearners.noActivity");
   const days = Math.floor((Date.now() - new Date(d).getTime()) / 86_400_000);
-  if (days <= 0) return "active today";
-  if (days === 1) return "active yesterday";
-  return `active ${days}d ago`;
+  if (days <= 0) return t("mentorLearners.activeToday");
+  if (days === 1) return t("mentorLearners.activeYesterday");
+  return t("mentorLearners.activeDaysAgo", { n: days });
 };
 
-const sessionLabel = (d: Date | string | null) => {
+const sessionLabel = (d: Date | string | null, t: T) => {
   if (!d) return null;
   const x = new Date(d);
   const day = isToday(d)
-    ? "today"
+    ? t("mentorLearners.today")
     : x.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   const time = x.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   return `${day} · ${time}`;
@@ -85,6 +91,7 @@ function Metric({
 }
 
 export default function MentorLearners() {
+  const { t } = useT();
   const stats = trpc.mentor.learnerStats.useQuery();
   const learners = stats.data ?? [];
   const [, navigate] = useLocation();
@@ -98,7 +105,7 @@ export default function MentorLearners() {
   const createPath = trpc.paths.create.useMutation({
     onSuccess: async (res) => {
       await utils.paths.list.invalidate();
-      toast.success("Path created — now add its steps");
+      toast.success(t("mentorLearners.pathCreated"));
       navigate(`/paths/${res.id}`);
     },
     onError: (e) => toast.error(e.message),
@@ -113,11 +120,11 @@ export default function MentorLearners() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My learners"
-        subtitle="Everyone you're mentoring, at a glance."
+        title={t("mentorLearners.title")}
+        subtitle={t("mentorLearners.subtitle")}
         action={
           <Button icon={Plus} variant="secondary" onClick={() => setShowCreate((s) => !s)}>
-            {showCreate ? "Close" : "New path"}
+            {showCreate ? t("common.close") : t("mentorLearners.newPath")}
           </Button>
         }
       />
@@ -125,11 +132,10 @@ export default function MentorLearners() {
       {/* Inline path builder — create here, add steps on the detail page, then assign */}
       {showCreate && (
         <Card className="p-6">
-          <h2 className="mb-1 text-base font-semibold text-navy-900">Create a learning path</h2>
-          <p className="mb-4 text-sm text-ink/55">
-            Give it a title and the dimensions it grows — you'll add its steps next, then assign
-            it to learners from their profiles.
-          </p>
+          <h2 className="mb-1 text-base font-semibold text-navy-900">
+            {t("mentorLearners.createTitle")}
+          </h2>
+          <p className="mb-4 text-sm text-ink/55">{t("mentorLearners.createHint")}</p>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -140,7 +146,7 @@ export default function MentorLearners() {
             <TextInput
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Path title (e.g. Digital Skills Foundations)"
+              placeholder={t("mentorLearners.pathTitlePlaceholder")}
             />
             <div className="flex flex-wrap gap-2">
               {ALL_DIMENSIONS.map((d) => (
@@ -155,12 +161,14 @@ export default function MentorLearners() {
                       : "border-gray-200 text-ink/70 hover:border-navy/40",
                   )}
                 >
-                  {d.label}
+                  {t("dimensions." + d.key)}
                 </button>
               ))}
             </div>
             <Button type="submit" disabled={!title.trim() || createPath.isPending}>
-              {createPath.isPending ? "Creating…" : "Create & add steps"}
+              {createPath.isPending
+                ? t("mentorLearners.creating")
+                : t("mentorLearners.createAndAddSteps")}
             </Button>
           </form>
         </Card>
@@ -175,19 +183,19 @@ export default function MentorLearners() {
             <Metric
               icon={CalendarClock}
               value={sessionsToday}
-              label="Sessions today"
+              label={t("mentorLearners.sessionsToday")}
               tone="bg-gold/15 text-gold"
             />
             <Metric
               icon={MessageSquare}
               value={unread}
-              label="Unread messages"
+              label={t("mentorLearners.unreadMessages")}
               tone="bg-navy/10 text-navy"
             />
             <Metric
               icon={AlertTriangle}
               value={atRisk}
-              label="Need attention"
+              label={t("mentorLearners.needAttention")}
               tone={atRisk > 0 ? "bg-red-500/12 text-red-600" : "bg-emerald-500/12 text-emerald-600"}
             />
           </div>
@@ -207,7 +215,7 @@ export default function MentorLearners() {
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs font-medium ${r.badge}`}
                           >
-                            {r.label}
+                            {t(r.labelKey)}
                           </span>
                         )}
                         {l.unread > 0 && (
@@ -217,8 +225,12 @@ export default function MentorLearners() {
                         )}
                       </div>
                       <div className="mt-0.5 truncate text-xs text-ink/50">
-                        {l.assignedCount} path{l.assignedCount === 1 ? "" : "s"} · {lastActive(l.lastActivityAt)}
-                        {l.nextSessionAt && ` · next ${sessionLabel(l.nextSessionAt)}`}
+                        {l.assignedCount === 1
+                          ? t("mentorLearners.pathCountOne", { n: l.assignedCount })
+                          : t("mentorLearners.pathCount", { n: l.assignedCount })}{" "}
+                        · {lastActive(l.lastActivityAt, t)}
+                        {l.nextSessionAt &&
+                          ` · ${t("mentorLearners.nextSession", { when: sessionLabel(l.nextSessionAt, t) ?? "" })}`}
                       </div>
                     </div>
                     <div className="hidden w-28 sm:block">
@@ -237,8 +249,8 @@ export default function MentorLearners() {
       ) : (
         <EmptyState
           icon={Users}
-          title="No learners assigned yet"
-          description="Learners assigned to you will appear here with their progress and activity."
+          title={t("mentorLearners.emptyTitle")}
+          description={t("mentorLearners.emptyDesc")}
         />
       )}
     </div>

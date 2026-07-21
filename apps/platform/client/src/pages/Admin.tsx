@@ -13,6 +13,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { InviteAndImport } from "../components/InviteAndImport";
 import { useToast } from "../components/Toast";
 import {
@@ -28,21 +29,14 @@ import {
 } from "../components/ui";
 
 type Role = "member" | "mentor" | "admin";
-const ROLE_LABEL: Record<string, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  manager: "Manager",
-  mentor: "Mentor",
-  member: "Learner",
-};
 
 type Filter = "all" | "learners" | "mentors" | "admins" | "no_mentor";
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "learners", label: "Learners" },
-  { key: "mentors", label: "Mentors" },
-  { key: "admins", label: "Admins" },
-  { key: "no_mentor", label: "Needs mentor" },
+const FILTERS: { key: Filter; labelKey: string }[] = [
+  { key: "all", labelKey: "admin.filterAll" },
+  { key: "learners", labelKey: "admin.filterLearners" },
+  { key: "mentors", labelKey: "admin.filterMentors" },
+  { key: "admins", labelKey: "admin.filterAdmins" },
+  { key: "no_mentor", labelKey: "admin.filterNoMentor" },
 ];
 
 function StatCard({
@@ -70,6 +64,7 @@ function StatCard({
 }
 
 export default function Admin() {
+  const { t } = useT();
   const me = trpc.auth.me.useQuery();
   const members = trpc.admin.members.useQuery();
   const utils = trpc.useUtils();
@@ -91,28 +86,28 @@ export default function Admin() {
       setEmail("");
       setRole("member");
       refresh();
-      toast.success(`${vars.name} added to the workspace`);
+      toast.success(t("admin.memberAdded", { name: vars.name }));
     },
     onError: (e) => toast.error(e.message),
   });
   const setMemberRole = trpc.admin.setRole.useMutation({
     onSuccess: () => {
       refresh();
-      toast.success("Role updated");
+      toast.success(t("admin.roleUpdated"));
     },
     onError: (e) => toast.error(e.message),
   });
   const assignMentor = trpc.admin.assignMentor.useMutation({
     onSuccess: () => {
       refresh();
-      toast.success("Mentor assigned");
+      toast.success(t("admin.mentorAssigned"));
     },
     onError: (e) => toast.error(e.message),
   });
   const unassignMentor = trpc.admin.unassignMentor.useMutation({
     onSuccess: () => {
       refresh();
-      toast.info("Mentor unassigned");
+      toast.info(t("admin.mentorUnassigned"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -120,7 +115,7 @@ export default function Admin() {
     onSuccess: async () => {
       await Promise.all([utils.auth.me.invalidate(), utils.org.myWorkspaces.invalidate()]);
       setOrgName(null);
-      toast.success("Workspace renamed");
+      toast.success(t("admin.workspaceRenamed"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -134,7 +129,7 @@ export default function Admin() {
       await utils.auth.me.invalidate();
       setBrandColor(null);
       setLogo(undefined);
-      toast.success("Branding updated — the workspace now wears its colors");
+      toast.success(t("admin.brandingUpdated"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -145,7 +140,7 @@ export default function Admin() {
   const onLogoFile = (file: File | undefined) => {
     if (!file) return;
     if (file.size > 250_000) {
-      toast.error("Logo is too large — please use an image under 250 KB");
+      toast.error(t("admin.logoTooLarge"));
       return;
     }
     const reader = new FileReader();
@@ -153,7 +148,7 @@ export default function Admin() {
     reader.readAsDataURL(file);
   };
 
-  const currentOrgName = me.data?.activeOrganization?.name ?? "Workspace";
+  const currentOrgName = me.data?.activeOrganization?.name ?? t("admin.workspaceFallback");
   const all = members.data ?? [];
   const mentors = all.filter((m) => ["mentor", "admin", "owner"].includes(m.role));
   const learners = all.filter((m) => m.role === "member");
@@ -181,27 +176,27 @@ export default function Admin() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Admin" subtitle={`Manage ${currentOrgName}`} />
+      <PageHeader title={t("admin.title")} subtitle={t("admin.subtitle", { org: currentOrgName })} />
 
       {/* Overview stats */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard icon={Users} value={all.length} label="Members" />
+        <StatCard icon={Users} value={all.length} label={t("admin.statMembers")} />
         <StatCard
           icon={GraduationCap}
           value={learners.length}
-          label="Learners"
+          label={t("admin.statLearners")}
           tone="bg-dim-knowledge/10 text-dim-knowledge"
         />
         <StatCard
           icon={Shield}
           value={mentors.length}
-          label="Mentors & staff"
+          label={t("admin.statMentors")}
           tone="bg-gold/15 text-gold"
         />
         <StatCard
           icon={AlertTriangle}
           value={noMentor.length}
-          label="Learners without mentor"
+          label={t("admin.statNoMentor")}
           tone={
             noMentor.length > 0
               ? "bg-red-500/12 text-red-600"
@@ -213,7 +208,7 @@ export default function Admin() {
       {/* Add member */}
       <Card className="p-6">
         <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
-          <UserPlus className="h-4 w-4" /> Add a member
+          <UserPlus className="h-4 w-4" /> {t("admin.addMember")}
         </h2>
         <form
           onSubmit={(e) => {
@@ -226,23 +221,23 @@ export default function Admin() {
           <TextInput
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Full name"
+            placeholder={t("admin.fullName")}
             className="sm:flex-1"
           />
           <TextInput
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
+            placeholder={t("admin.email")}
             className="sm:flex-1"
           />
           <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
-            <option value="member">Learner</option>
-            <option value="mentor">Mentor</option>
-            <option value="admin">Admin</option>
+            <option value="member">{t("roles.member")}</option>
+            <option value="mentor">{t("roles.mentor")}</option>
+            <option value="admin">{t("roles.admin")}</option>
           </Select>
           <Button type="submit" icon={UserPlus} disabled={addMember.isPending}>
-            Add
+            {t("admin.add")}
           </Button>
         </form>
 
@@ -250,9 +245,11 @@ export default function Admin() {
           <div className="mt-4 flex items-start gap-3 rounded-xl border border-gold/40 bg-gold/10 p-4">
             <KeyRound className="mt-0.5 h-5 w-5 text-gold" />
             <div className="text-sm">
-              <p className="font-semibold text-navy-900">Account created for {created.email}</p>
+              <p className="font-semibold text-navy-900">
+                {t("admin.accountCreated", { email: created.email })}
+              </p>
               <p className="text-ink/70">
-                Share this temporary password (shown once):{" "}
+                {t("admin.tempPasswordHint")}{" "}
                 <span className="rounded bg-white px-2 py-0.5 font-mono font-semibold">
                   {created.tempPassword}
                 </span>
@@ -273,7 +270,7 @@ export default function Admin() {
             <TextInput
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name or email…"
+              placeholder={t("admin.searchPlaceholder")}
               className="pl-9"
             />
           </div>
@@ -292,7 +289,7 @@ export default function Admin() {
                     : "",
                 )}
               >
-                {f.label}
+                {t(f.labelKey)}
                 {f.key === "no_mentor" && noMentor.length > 0 ? ` (${noMentor.length})` : ""}
               </button>
             ))}
@@ -302,9 +299,7 @@ export default function Admin() {
         {members.isLoading ? (
           <ListSkeleton rows={4} />
         ) : visible.length === 0 ? (
-          <p className="px-1 py-6 text-center text-sm text-ink/45">
-            No members match this search.
-          </p>
+          <p className="px-1 py-6 text-center text-sm text-ink/45">{t("admin.noMatch")}</p>
         ) : (
           <div className="divide-y divide-gray-100">
             {visible.map((m) => {
@@ -320,7 +315,7 @@ export default function Admin() {
                       </span>
                       {isLearner && !m.mentorUserId && (
                         <span className="rounded-full bg-red-500/12 px-2 py-0.5 text-xs font-medium text-red-600">
-                          No mentor
+                          {t("admin.noMentorBadge")}
                         </span>
                       )}
                     </div>
@@ -329,7 +324,7 @@ export default function Admin() {
 
                   {/* Role */}
                   {selfOwner ? (
-                    <Badge className="bg-navy-900 text-white">Owner</Badge>
+                    <Badge className="bg-navy-900 text-white">{t("roles.owner")}</Badge>
                   ) : (
                     <Select
                       value={m.role}
@@ -338,9 +333,9 @@ export default function Admin() {
                       }
                       className="py-1.5 text-xs"
                     >
-                      <option value="member">Learner</option>
-                      <option value="mentor">Mentor</option>
-                      <option value="admin">Admin</option>
+                      <option value="member">{t("roles.member")}</option>
+                      <option value="mentor">{t("roles.mentor")}</option>
+                      <option value="admin">{t("roles.admin")}</option>
                     </Select>
                   )}
 
@@ -365,16 +360,16 @@ export default function Admin() {
                       }}
                       className="py-1.5 text-xs"
                     >
-                      <option value="">No mentor</option>
+                      <option value="">{t("admin.noMentorOption")}</option>
                       {mentors.map((mentor) => (
                         <option key={mentor.userId} value={mentor.userId}>
-                          Mentor: {mentor.name ?? mentor.email}
+                          {t("admin.mentorOption", { name: mentor.name ?? mentor.email ?? "" })}
                         </option>
                       ))}
                     </Select>
                   )}
 
-                  {!isLearner && !selfOwner && <Badge>{ROLE_LABEL[m.role] ?? m.role}</Badge>}
+                  {!isLearner && !selfOwner && <Badge>{t(`roles.${m.role}`)}</Badge>}
 
                   {/* Learner drill-through → same profile mentors see (admins allowed) */}
                   {isLearner && (
@@ -382,7 +377,7 @@ export default function Admin() {
                       to={`/mentor/${m.userId}`}
                       className="inline-flex items-center gap-0.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-navy/70 transition hover:bg-gray-50 hover:text-navy"
                     >
-                      Profile <ChevronRight className="h-3.5 w-3.5" />
+                      {t("admin.profile")} <ChevronRight className="h-3.5 w-3.5" />
                     </Link>
                   )}
                 </div>
@@ -395,7 +390,7 @@ export default function Admin() {
       {/* Workspace settings */}
       <Card className="p-6">
         <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
-          <Building2 className="h-4 w-4" /> Workspace settings
+          <Building2 className="h-4 w-4" /> {t("admin.workspaceSettings")}
         </h2>
         <form
           onSubmit={(e) => {
@@ -407,7 +402,7 @@ export default function Admin() {
           className="flex flex-col gap-3 sm:flex-row sm:items-end"
         >
           <label className="flex-1 text-sm">
-            <span className="mb-1 block font-medium text-ink/80">Workspace name</span>
+            <span className="mb-1 block font-medium text-ink/80">{t("admin.workspaceName")}</span>
             <TextInput value={editedName} onChange={(e) => setOrgName(e.target.value)} />
           </label>
           <Button
@@ -418,28 +413,26 @@ export default function Admin() {
               editedName.trim() === currentOrgName
             }
           >
-            {renameWorkspace.isPending ? "Saving…" : "Rename"}
+            {renameWorkspace.isPending ? t("common.saving") : t("admin.rename")}
           </Button>
         </form>
         {/* White-label branding */}
         <div className="mt-6 border-t border-gray-100 pt-5">
-          <h3 className="mb-1 text-sm font-semibold text-navy-900">Branding</h3>
-          <p className="mb-4 text-xs text-ink/50">
-            Give this workspace its own identity — the logo and color apply for every member.
-          </p>
+          <h3 className="mb-1 text-sm font-semibold text-navy-900">{t("admin.branding")}</h3>
+          <p className="mb-4 text-xs text-ink/50">{t("admin.brandingHint")}</p>
           <div className="flex flex-wrap items-end gap-4">
             <label className="text-sm">
-              <span className="mb-1 block font-medium text-ink/80">Logo</span>
+              <span className="mb-1 block font-medium text-ink/80">{t("admin.logo")}</span>
               <div className="flex items-center gap-3">
                 {effectiveLogo ? (
                   <img
                     src={effectiveLogo}
-                    alt="Workspace logo"
+                    alt={t("admin.logoAlt")}
                     className="h-12 w-12 rounded-xl border border-gray-200 bg-white object-contain p-1"
                   />
                 ) : (
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-gray-300 text-xs text-ink/40">
-                    none
+                    {t("admin.none")}
                   </div>
                 )}
                 <input
@@ -451,7 +444,7 @@ export default function Admin() {
               </div>
             </label>
             <label className="text-sm">
-              <span className="mb-1 block font-medium text-ink/80">Primary color</span>
+              <span className="mb-1 block font-medium text-ink/80">{t("admin.primaryColor")}</span>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -469,7 +462,7 @@ export default function Admin() {
                 }
                 disabled={updateBranding.isPending || !brandingDirty}
               >
-                {updateBranding.isPending ? "Saving…" : "Save branding"}
+                {updateBranding.isPending ? t("common.saving") : t("admin.saveBranding")}
               </Button>
               {(branding?.primaryColor || branding?.logoUrl) && (
                 <Button
@@ -477,7 +470,7 @@ export default function Admin() {
                   onClick={() => updateBranding.mutate({ primaryColor: null, logoUrl: null })}
                   disabled={updateBranding.isPending}
                 >
-                  Reset to Pleyad
+                  {t("admin.resetBranding")}
                 </Button>
               )}
             </div>
