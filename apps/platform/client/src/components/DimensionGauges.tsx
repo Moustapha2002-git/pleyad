@@ -1,31 +1,32 @@
 import { Brain, HeartHandshake, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { nextTierAt, tierFor } from "../lib/milestones";
+import { useT } from "../lib/i18n";
 import { Card, ProgressBar } from "./ui";
 
 const META = {
   knowledge: {
-    label: "Knowledge",
+    labelKey: "dimensions.knowledge",
     sub: "Savoir",
     icon: Brain,
     bar: "bg-dim-knowledge",
     tile: "bg-dim-knowledge/10 text-dim-knowledge",
   },
   skills: {
-    label: "Skills",
+    labelKey: "dimensions.skills",
     sub: "Savoir-faire",
     icon: Wrench,
     bar: "bg-dim-skills",
     tile: "bg-dim-skills/10 text-dim-skills",
   },
   human_development: {
-    label: "Human Development",
+    labelKey: "dimensions.human_development",
     sub: "Savoir-être",
     icon: HeartHandshake,
     bar: "bg-dim-human",
     tile: "bg-dim-human/10 text-dim-human",
   },
-} satisfies Record<string, { label: string; sub: string; icon: LucideIcon; bar: string; tile: string }>;
+} satisfies Record<string, { labelKey: string; sub: string; icon: LucideIcon; bar: string; tile: string }>;
 
 function metaFor(dimension: string) {
   return META[dimension as keyof typeof META] ?? META.knowledge;
@@ -36,6 +37,7 @@ export function DimensionGauges({
 }: {
   data: { dimension: string; score: number; pathCount: number }[];
 }) {
+  const { t } = useT();
   return (
     <div className="grid gap-4 sm:grid-cols-3">
       {data.map((d) => {
@@ -51,13 +53,13 @@ export function DimensionGauges({
                   <Icon className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="font-semibold text-navy-900">{m.label}</div>
+                  <div className="font-semibold text-navy-900">{t(m.labelKey)}</div>
                   <div className="text-[11px] uppercase tracking-wide text-ink/40">{m.sub}</div>
                 </div>
               </div>
               {tier && (
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${tier.pill}`}>
-                  {tier.label}
+                  {t(`dimensions.tier_${tier.key}`)}
                 </span>
               )}
             </div>
@@ -67,13 +69,13 @@ export function DimensionGauges({
                 <span className="text-lg text-ink/40">%</span>
               </span>
               <span className="text-xs text-ink/45">
-                {d.pathCount} path{d.pathCount === 1 ? "" : "s"}
+                {d.pathCount} {d.pathCount === 1 ? t("dimensions.path") : t("dimensions.paths")}
               </span>
             </div>
             <ProgressBar value={d.score} className="mt-3" barClassName={m.bar} />
             {next != null && (
               <p className="mt-2 text-[11px] text-ink/40">
-                {next - d.score}% to {next === 100 ? "Master" : "next tier"}
+                {next - d.score}% {next === 100 ? t("dimensions.toMaster") : t("dimensions.toNextTier")}
               </p>
             )}
           </Card>
@@ -84,12 +86,13 @@ export function DimensionGauges({
 }
 
 export function DimensionChip({ dimension }: { dimension: string }) {
+  const { t } = useT();
   const m = metaFor(dimension);
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${m.tile}`}
     >
-      {m.label}
+      {t(m.labelKey)}
     </span>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, ExternalLink, Play } from "lucide-react";
 import { platformTile, thumbnailFor } from "../lib/thumbnails";
+import { useT } from "../lib/i18n";
 import { cn } from "./ui";
 
 export type SkillItem = {
@@ -30,6 +31,7 @@ export function SkillCard({
   /** Open the in-app learning workspace for this skill (stays on-site). */
   onOpen?: () => void;
 }) {
+  const { t } = useT();
   // Local value while dragging; commits on release.
   const [value, setValue] = useState(item.progress);
   useEffect(() => setValue(item.progress), [item.progress]);
@@ -37,12 +39,12 @@ export function SkillCard({
   const thumb = thumbnailFor(item.url, item.thumbnailUrl);
   const meta = platformTile(item.platform);
   const statusLabel = item.done
-    ? "Mastered"
+    ? t("skillCard.mastered")
     : item.progress > 0
-      ? "In progress"
+      ? t("skillCard.inProgress")
       : isNext
-        ? "Up next"
-        : "Not started";
+        ? t("skillCard.upNext")
+        : t("skillCard.notStarted");
 
   return (
     <div
@@ -145,7 +147,7 @@ export function SkillCard({
               rel="noreferrer"
               className="inline-flex items-center gap-0.5 font-medium text-navy/60 transition hover:text-navy"
             >
-              Open <ExternalLink className="h-3 w-3" />
+              {t("skillCard.open")} <ExternalLink className="h-3 w-3" />
             </a>
           )}
         </div>
@@ -162,7 +164,7 @@ export function SkillCard({
             onMouseUp={() => value !== item.progress && onProgress(value)}
             onTouchEnd={() => value !== item.progress && onProgress(value)}
             onKeyUp={() => value !== item.progress && onProgress(value)}
-            aria-label={`Progress on ${item.title}`}
+            aria-label={t("skillCard.progressOn", { title: item.title })}
             className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-gray-200 accent-[#0a2540]"
           />
           <span

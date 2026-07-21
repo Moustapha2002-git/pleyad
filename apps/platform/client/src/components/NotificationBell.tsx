@@ -11,6 +11,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { cn } from "./ui";
 
 const META = {
@@ -22,18 +23,21 @@ const META = {
   message: { icon: MessageSquare, tint: "bg-navy/10 text-navy" },
 } satisfies Record<string, { icon: LucideIcon; tint: string }>;
 
-const relativeTime = (d: string | Date) => {
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+const relativeTime = (d: string | Date, t: T) => {
   const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
-  if (s < 60) return "just now";
+  if (s < 60) return t("notifications.justNow");
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return t("notifications.minutesAgo", { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return t("notifications.hoursAgo", { n: h });
   const days = Math.floor(h / 24);
-  return days === 1 ? "yesterday" : `${days}d ago`;
+  return days === 1 ? t("notifications.yesterday") : t("notifications.daysAgo", { n: days });
 };
 
 export function NotificationBell() {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const utils = trpc.useUtils();
   const [, setLocation] = useLocation();
@@ -65,7 +69,7 @@ export function NotificationBell() {
       <button
         onClick={toggle}
         className="relative rounded-lg p-2 text-ink/60 transition hover:bg-gray-100 hover:text-navy"
-        aria-label="Notifications"
+        aria-label={t("notifications.title")}
       >
         <Bell className="h-5 w-5" />
         {count > 0 && (
@@ -81,22 +85,22 @@ export function NotificationBell() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-gray-200/70 bg-white shadow-[var(--shadow-pop)]">
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-              <span className="text-sm font-semibold text-navy-900">Notifications</span>
+              <span className="text-sm font-semibold text-navy-900">{t("notifications.title")}</span>
               {items.length > 0 && (
                 <button
                   onClick={() => markAll.mutate()}
                   className="text-xs font-medium text-navy/60 transition hover:text-navy"
                 >
-                  Mark all read
+                  {t("notifications.markAllRead")}
                 </button>
               )}
             </div>
             <div className="max-h-96 overflow-y-auto">
               {list.isLoading ? (
-                <p className="px-4 py-6 text-center text-sm text-ink/45">Loading…</p>
+                <p className="px-4 py-6 text-center text-sm text-ink/45">{t("common.loading")}</p>
               ) : items.length === 0 ? (
                 <p className="px-4 py-8 text-center text-sm text-ink/45">
-                  You're all caught up 🎉
+                  {t("notifications.allCaughtUp")}
                 </p>
               ) : (
                 items.map((n) => {
@@ -131,7 +135,7 @@ export function NotificationBell() {
                           <span className="mt-0.5 block truncate text-xs text-ink/55">{n.body}</span>
                         )}
                         <span className="mt-0.5 block text-[11px] text-ink/40">
-                          {relativeTime(n.createdAt)}
+                          {relativeTime(n.createdAt, t)}
                         </span>
                       </span>
                       {!n.readAt && (

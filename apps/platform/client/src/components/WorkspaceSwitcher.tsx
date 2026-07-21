@@ -1,7 +1,9 @@
 import { ChevronsUpDown } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 
 export function WorkspaceSwitcher() {
+  const { t } = useT();
   const me = trpc.auth.me.useQuery();
   const workspaces = trpc.org.myWorkspaces.useQuery();
   const switchWs = trpc.org.switchWorkspace.useMutation({
@@ -9,7 +11,7 @@ export function WorkspaceSwitcher() {
   });
 
   const current = me.data?.activeOrganization?.publicId ?? "";
-  const name = me.data?.activeOrganization?.name ?? "Personal workspace";
+  const name = me.data?.activeOrganization?.name ?? t("workspace.personal");
   const type = me.data?.activeOrganization?.type;
   const dot = type === "team" ? "bg-gold" : "bg-navy-600";
 

@@ -1,4 +1,5 @@
 import { PartyPopper } from "lucide-react";
+import { useT } from "../lib/i18n";
 import { Button } from "./ui";
 
 /**
@@ -14,6 +15,7 @@ export function Celebration({
   message: string;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const confetti = ["🎉", "✨", "🎊", "⭐", "🏅", "🎈", "💫", "🥳"];
   return (
     <div
@@ -46,7 +48,7 @@ export function Celebration({
         <h2 className="mt-5 text-xl font-bold text-navy-900">{title}</h2>
         <p className="mt-2 text-sm text-ink/60">{message}</p>
         <Button className="mt-6 w-full" onClick={onClose}>
-          Keep going 🚀
+          {t("common.keepGoing")}
         </Button>
       </div>
     </div>

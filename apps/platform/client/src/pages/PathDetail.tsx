@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { Celebration } from "../components/Celebration";
 import { DimensionChip } from "../components/DimensionGauges";
 import { SkillCard } from "../components/SkillCard";
@@ -21,6 +22,7 @@ type Platform = (typeof PLATFORMS)[number];
 
 export default function PathDetail({ id }: { id: number }) {
   const [, navigate] = useLocation();
+  const { t } = useT();
   const path = trpc.paths.get.useQuery({ id });
   const me = trpc.auth.me.useQuery();
   const utils = trpc.useUtils();
@@ -47,7 +49,9 @@ export default function PathDetail({ id }: { id: number }) {
       setBulkDue("");
       utils.paths.candidates.invalidate({ collectionId: id });
       toast.success(
-        `Path assigned to ${res.assignedCount} learner${res.assignedCount === 1 ? "" : "s"}`,
+        res.assignedCount === 1
+          ? t("pathDetail.assignedToastOne", { n: res.assignedCount })
+          : t("pathDetail.assignedToast", { n: res.assignedCount }),
       );
     },
     onError: (e) => toast.error(e.message),
@@ -71,7 +75,7 @@ export default function PathDetail({ id }: { id: number }) {
       setTitle("");
       setUrl("");
       await refresh();
-      toast.success("Step added");
+      toast.success(t("pathDetail.stepAdded"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -80,8 +84,8 @@ export default function PathDetail({ id }: { id: number }) {
     onError: (e) => toast.error(e.message),
   });
 
-  if (path.isLoading) return <Spinner label="Loading…" />;
-  if (!path.data) return <p className="text-ink/50">Path not found.</p>;
+  if (path.isLoading) return <Spinner label={t("common.loading")} />;
+  if (!path.data) return <p className="text-ink/50">{t("pathDetail.notFound")}</p>;
   const p = path.data;
 
   const nextItem = p.items.find((i) => !i.done);
@@ -102,7 +106,7 @@ export default function PathDetail({ id }: { id: number }) {
         to="/paths"
         className="inline-flex items-center gap-1 text-sm text-navy/60 transition hover:text-navy"
       >
-        <ArrowLeft className="h-4 w-4" /> All paths
+        <ArrowLeft className="h-4 w-4" /> {t("pathDetail.allPaths")}
       </Link>
 
       <div>
@@ -125,7 +129,7 @@ export default function PathDetail({ id }: { id: number }) {
         <Card className="flex items-center gap-3 border-emerald-200 bg-emerald-50 p-4">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
           <p className="text-sm font-medium text-emerald-900">
-            You've completed this path — every step done. 🎉
+            {t("pathDetail.completeBanner")}
           </p>
         </Card>
       ) : nextItem ? (
@@ -133,7 +137,7 @@ export default function PathDetail({ id }: { id: number }) {
           <ArrowRight className="h-5 w-5 shrink-0 text-navy" />
           <div className="min-w-0 flex-1">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-navy/50">
-              Next up
+              {t("pathDetail.nextUp")}
             </div>
             <div className="truncate font-medium text-navy-900">{nextItem.title}</div>
           </div>
@@ -141,20 +145,20 @@ export default function PathDetail({ id }: { id: number }) {
             onClick={() => navigate(`/paths/${id}/learn/${nextItem.resourceId}`)}
             className="inline-flex items-center gap-1 rounded-lg bg-navy-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-navy-800"
           >
-            Start <ArrowRight className="h-3.5 w-3.5" />
+            {t("pathDetail.start")} <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </Card>
       ) : null}
 
       <div>
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-base font-semibold text-navy-900">Skills in this path</h2>
+          <h2 className="text-base font-semibold text-navy-900">{t("pathDetail.skillsInPath")}</h2>
           <span className="text-sm text-ink/45">
-            {p.completedCount}/{p.itemCount} mastered
+            {t("pathDetail.masteredCount", { done: p.completedCount, total: p.itemCount })}
           </span>
         </div>
         {p.items.length === 0 ? (
-          <Card className="p-6 text-ink/50">No skills yet — add the first below.</Card>
+          <Card className="p-6 text-ink/50">{t("pathDetail.noSkills")}</Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {p.items.map((it) => (
@@ -171,7 +175,7 @@ export default function PathDetail({ id }: { id: number }) {
       </div>
 
       <Card className="p-6">
-        <h2 className="mb-4 text-base font-semibold text-navy-900">Add a skill / course</h2>
+        <h2 className="mb-4 text-base font-semibold text-navy-900">{t("pathDetail.addSkillTitle")}</h2>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -183,7 +187,7 @@ export default function PathDetail({ id }: { id: number }) {
           <TextInput
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Step title (e.g. Python Basics — Coursera)"
+            placeholder={t("pathDetail.stepTitlePlaceholder")}
           />
           <div className="flex flex-col gap-2 sm:flex-row">
             <Select value={platform} onChange={(e) => setPlatform(e.target.value as Platform)}>
@@ -196,12 +200,12 @@ export default function PathDetail({ id }: { id: number }) {
             <TextInput
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="URL (optional)"
+              placeholder={t("pathDetail.urlPlaceholder")}
               className="flex-1"
             />
           </div>
           <Button type="submit" icon={Plus} disabled={addItem.isPending}>
-            Add step
+            {t("pathDetail.addStep")}
           </Button>
         </form>
       </Card>
@@ -211,7 +215,7 @@ export default function PathDetail({ id }: { id: number }) {
         <Card className="p-6">
           <div className="mb-1 flex items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 text-base font-semibold text-navy-900">
-              <UsersRound className="h-4 w-4" /> Assign this path
+              <UsersRound className="h-4 w-4" /> {t("pathDetail.assignTitle")}
             </h2>
             {unassignedCandidates.length > 0 && (
               <button
@@ -224,13 +228,13 @@ export default function PathDetail({ id }: { id: number }) {
                 }
                 className="text-xs font-medium text-navy/60 transition hover:text-navy"
               >
-                {selected.size === unassignedCandidates.length ? "Clear selection" : "Select all"}
+                {selected.size === unassignedCandidates.length
+                  ? t("pathDetail.clearSelection")
+                  : t("pathDetail.selectAll")}
               </button>
             )}
           </div>
-          <p className="mb-4 text-sm text-ink/55">
-            Pick learners and assign them this path in one go.
-          </p>
+          <p className="mb-4 text-sm text-ink/55">{t("pathDetail.assignHint")}</p>
 
           <div className="mb-4 grid gap-1.5 sm:grid-cols-2">
             {(candidates.data ?? []).map((c) => {
@@ -264,7 +268,9 @@ export default function PathDetail({ id }: { id: number }) {
                     {c.name ?? c.email}
                   </span>
                   {c.alreadyAssigned && (
-                    <span className="shrink-0 text-[11px] text-ink/40">assigned</span>
+                    <span className="shrink-0 text-[11px] text-ink/40">
+                      {t("pathDetail.assignedTag")}
+                    </span>
                   )}
                 </button>
               );
@@ -273,7 +279,7 @@ export default function PathDetail({ id }: { id: number }) {
 
           <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:items-end">
             <label className="text-sm">
-              <span className="mb-1 block font-medium text-ink/80">Due (optional)</span>
+              <span className="mb-1 block font-medium text-ink/80">{t("pathDetail.dueOptional")}</span>
               <TextInput
                 type="date"
                 value={bulkDue}
@@ -293,8 +299,10 @@ export default function PathDetail({ id }: { id: number }) {
               disabled={selected.size === 0 || assignBulk.isPending}
             >
               {assignBulk.isPending
-                ? "Assigning…"
-                : `Assign to ${selected.size || ""} learner${selected.size === 1 ? "" : "s"}`}
+                ? t("pathDetail.assigning")
+                : selected.size === 1
+                  ? t("pathDetail.assignToOne", { n: selected.size })
+                  : t("pathDetail.assignTo", { n: selected.size })}
             </Button>
           </div>
         </Card>
@@ -302,8 +310,8 @@ export default function PathDetail({ id }: { id: number }) {
 
       {celebrate && (
         <Celebration
-          title="Path complete!"
-          message={`You finished "${p.title}". Your development gauges just moved.`}
+          title={t("pathDetail.celebrateTitle")}
+          message={t("pathDetail.celebrateMsg", { title: p.title })}
           onClose={() => setCelebrate(false)}
         />
       )}

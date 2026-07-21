@@ -1,4 +1,5 @@
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { Spinner } from "./ui";
 
 /**
@@ -14,6 +15,7 @@ export function VideoCall({
   displayName: string;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const daily = trpc.calls.dailyUrl.useQuery({ room }, { refetchOnWindowFocus: false });
 
   const jitsiParams = [
@@ -41,7 +43,7 @@ export function VideoCall({
       </div>
       {src ? (
         <iframe
-          title="Pleyad video call"
+          title={t("call.videoCallTitle")}
           src={src}
           allow="camera; microphone; fullscreen; display-capture; autoplay"
           className="h-full w-full rounded-xl border-0 bg-black"
@@ -53,7 +55,7 @@ export function VideoCall({
               Couldn't start the call: {daily.error.message}
             </span>
           ) : (
-            <Spinner label="Connecting…" />
+            <Spinner label={t("call.connecting")} />
           )}
         </div>
       )}

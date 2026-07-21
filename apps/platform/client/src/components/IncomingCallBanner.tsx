@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Phone, PhoneOff, Video } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { VideoCall } from "./VideoCall";
 
 export function IncomingCallBanner() {
+  const { t } = useT();
   const me = trpc.auth.me.useQuery();
   const utils = trpc.useUtils();
   const incoming = trpc.calls.incoming.useQuery(undefined, {
@@ -14,7 +16,7 @@ export function IncomingCallBanner() {
   const decline = trpc.calls.decline.useMutation();
   const [active, setActive] = useState<{ room: string } | null>(null);
 
-  const myName = me.data?.name ?? me.data?.email ?? "Me";
+  const myName = me.data?.name ?? me.data?.email ?? t("call.meFallback");
 
   // In an answered call — render the call overlay.
   if (active) {
@@ -33,15 +35,17 @@ export function IncomingCallBanner() {
           <Phone className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate font-semibold">{call.fromName} is calling…</div>
-          <div className="text-xs text-white/50">Incoming video call</div>
+          <div className="truncate font-semibold">
+            {t("call.isCalling", { name: call.fromName ?? "" })}
+          </div>
+          <div className="text-xs text-white/50">{t("call.incoming")}</div>
         </div>
         <button
           onClick={() =>
             decline.mutate(undefined, { onSuccess: () => utils.calls.incoming.invalidate() })
           }
           className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500 transition hover:bg-red-600"
-          aria-label="Decline"
+          aria-label={t("call.decline")}
         >
           <PhoneOff className="h-4 w-4" />
         </button>
@@ -52,7 +56,7 @@ export function IncomingCallBanner() {
           }}
           className="flex h-10 items-center gap-1.5 rounded-full bg-emerald-500 px-4 font-semibold transition hover:bg-emerald-600"
         >
-          <Video className="h-4 w-4" /> Join
+          <Video className="h-4 w-4" /> {t("call.join")}
         </button>
       </div>
     </div>

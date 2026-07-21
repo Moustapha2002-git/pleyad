@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, ExternalLink, Plus } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { Celebration } from "../components/Celebration";
 import { SkillCard } from "../components/SkillCard";
 import { useToast } from "../components/Toast";
@@ -12,6 +13,7 @@ type Platform = (typeof PLATFORMS)[number];
 
 export default function PlaylistDetail({ id }: { id: number }) {
   const [, navigate] = useLocation();
+  const { t } = useT();
   const playlist = trpc.playlists.get.useQuery({ id });
   const utils = trpc.useUtils();
   const toast = useToast();
@@ -29,7 +31,7 @@ export default function PlaylistDetail({ id }: { id: number }) {
       setTitle("");
       setUrl("");
       await refresh();
-      toast.success("Course added");
+      toast.success(t("playlistDetail.courseAdded"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -38,8 +40,8 @@ export default function PlaylistDetail({ id }: { id: number }) {
     onError: (e) => toast.error(e.message),
   });
 
-  if (playlist.isLoading) return <Spinner label="Loading…" />;
-  if (!playlist.data) return <p className="text-ink/50">Playlist not found.</p>;
+  if (playlist.isLoading) return <Spinner label={t("common.loading")} />;
+  if (!playlist.data) return <p className="text-ink/50">{t("playlistDetail.notFound")}</p>;
   const p = playlist.data;
 
   const nextItem = p.items.find((i) => !i.done);
@@ -60,7 +62,7 @@ export default function PlaylistDetail({ id }: { id: number }) {
         to="/paths"
         className="inline-flex items-center gap-1 text-sm text-navy/60 transition hover:text-navy"
       >
-        <ArrowLeft className="h-4 w-4" /> My Learning
+        <ArrowLeft className="h-4 w-4" /> {t("playlistDetail.back")}
       </Link>
 
       <div>
@@ -75,7 +77,7 @@ export default function PlaylistDetail({ id }: { id: number }) {
         <Card className="flex items-center gap-3 border-emerald-200 bg-emerald-50 p-4">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
           <p className="text-sm font-medium text-emerald-900">
-            You've finished every course in this playlist. 🎉
+            {t("playlistDetail.completeBanner")}
           </p>
         </Card>
       ) : nextItem ? (
@@ -83,7 +85,7 @@ export default function PlaylistDetail({ id }: { id: number }) {
           <ArrowRight className="h-5 w-5 shrink-0 text-navy" />
           <div className="min-w-0 flex-1">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-navy/50">
-              Next up
+              {t("playlistDetail.nextUp")}
             </div>
             <div className="truncate font-medium text-navy-900">{nextItem.title}</div>
           </div>
@@ -91,20 +93,20 @@ export default function PlaylistDetail({ id }: { id: number }) {
             onClick={() => navigate(`/playlists/${id}/learn/${nextItem.resourceId}`)}
             className="inline-flex items-center gap-1 rounded-lg bg-navy-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-navy-800"
           >
-            Start <ArrowRight className="h-3.5 w-3.5" />
+            {t("playlistDetail.start")} <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </Card>
       ) : null}
 
       <div>
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-base font-semibold text-navy-900">Courses</h2>
+          <h2 className="text-base font-semibold text-navy-900">{t("playlistDetail.courses")}</h2>
           <span className="text-sm text-ink/45">
-            {p.completedCount}/{p.itemCount} finished
+            {t("playlistDetail.finishedCount", { done: p.completedCount, total: p.itemCount })}
           </span>
         </div>
         {p.items.length === 0 ? (
-          <Card className="p-6 text-ink/50">No courses yet — add the first below.</Card>
+          <Card className="p-6 text-ink/50">{t("playlistDetail.noCourses")}</Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {p.items.map((it) => (
@@ -121,7 +123,7 @@ export default function PlaylistDetail({ id }: { id: number }) {
       </div>
 
       <Card className="p-6">
-        <h2 className="mb-4 text-base font-semibold text-navy-900">Add a course</h2>
+        <h2 className="mb-4 text-base font-semibold text-navy-900">{t("playlistDetail.addCourseTitle")}</h2>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -133,7 +135,7 @@ export default function PlaylistDetail({ id }: { id: number }) {
           <TextInput
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Course title (e.g. React — Full Course)"
+            placeholder={t("playlistDetail.courseTitlePlaceholder")}
           />
           <div className="flex flex-col gap-2 sm:flex-row">
             <Select value={platform} onChange={(e) => setPlatform(e.target.value as Platform)}>
@@ -146,20 +148,20 @@ export default function PlaylistDetail({ id }: { id: number }) {
             <TextInput
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="URL (optional)"
+              placeholder={t("playlistDetail.urlPlaceholder")}
               className="flex-1"
             />
           </div>
           <Button type="submit" icon={Plus} disabled={addItem.isPending}>
-            Add course
+            {t("playlistDetail.addCourse")}
           </Button>
         </form>
       </Card>
 
       {celebrate && (
         <Celebration
-          title="Playlist complete!"
-          message={`You finished every course in "${p.title}". Nicely done.`}
+          title={t("playlistDetail.celebrateTitle")}
+          message={t("playlistDetail.celebrateMsg", { title: p.title })}
           onClose={() => setCelebrate(false)}
         />
       )}

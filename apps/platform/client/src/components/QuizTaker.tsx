@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, X } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { Button, Card, Spinner, cn } from "./ui";
 
 type Review = {
@@ -11,6 +12,7 @@ type Review = {
 };
 
 export function QuizTaker({ quizId, onClose }: { quizId: number; onClose: () => void }) {
+  const { t } = useT();
   const quiz = trpc.quizzes.take.useQuery({ quizId });
   const utils = trpc.useUtils();
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -30,7 +32,7 @@ export function QuizTaker({ quizId, onClose }: { quizId: number; onClose: () => 
   if (quiz.isLoading)
     return (
       <Card className="p-6">
-        <Spinner label="Loading quiz…" />
+        <Spinner label={t("quiz.loading")} />
       </Card>
     );
   if (!quiz.data) return null;
@@ -43,7 +45,7 @@ export function QuizTaker({ quizId, onClose }: { quizId: number; onClose: () => 
         <div className="mb-6 text-center">
           <div className="text-5xl font-bold text-navy-900">{result.score}%</div>
           <p className="mt-2 text-ink/60">
-            {result.correctCount} of {result.totalCount} correct
+            {t("quiz.correctOf", { correct: result.correctCount, total: result.totalCount })}
           </p>
         </div>
 
@@ -90,7 +92,11 @@ export function QuizTaker({ quizId, onClose }: { quizId: number; onClose: () => 
                       >
                         <span>{o}</span>
                         <span className="shrink-0 text-xs font-semibold">
-                          {isCorrect ? "Correct answer" : isYours ? "Your answer" : ""}
+                          {isCorrect
+                            ? t("quiz.correctAnswer")
+                            : isYours
+                              ? t("quiz.yourAnswer")
+                              : ""}
                         </span>
                       </div>
                     );
@@ -102,7 +108,7 @@ export function QuizTaker({ quizId, onClose }: { quizId: number; onClose: () => 
         </div>
 
         <Button className="mt-6 w-full" onClick={onClose}>
-          Done
+          {t("common.done")}
         </Button>
       </Card>
     );
@@ -140,10 +146,10 @@ export function QuizTaker({ quizId, onClose }: { quizId: number; onClose: () => 
           onClick={() => submit.mutate({ quizId, answers: qs.map((_, i) => answers[i] ?? -1) })}
           disabled={submit.isPending}
         >
-          Submit
+          {t("quiz.submit")}
         </Button>
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {t("common.cancel")}
         </Button>
       </div>
     </Card>

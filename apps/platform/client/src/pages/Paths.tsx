@@ -243,7 +243,7 @@ export default function Paths() {
                       : "border-gray-200 text-ink/70 hover:border-navy/40",
                   )}
                 >
-                  {d.label}
+                  {t("dimensions." + d.key)}
                 </button>
               ))}
             </div>
@@ -425,7 +425,7 @@ export default function Paths() {
                       : "border-gray-200 text-ink/60 hover:border-gold/60",
                   )}
                 >
-                  {d.key === "all" ? t("learning.allSkills") : d.label}
+                  {d.key === "all" ? t("learning.allSkills") : t("dimensions." + d.key)}
                 </button>
               ))}
             </div>

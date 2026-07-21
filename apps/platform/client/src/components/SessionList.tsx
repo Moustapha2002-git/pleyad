@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CalendarDays, Pencil, Video, X } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { useToast } from "./Toast";
 import { VideoCall } from "./VideoCall";
 import { callRoomName } from "../lib/room";
@@ -52,13 +53,14 @@ export function SessionList({
   sessions: Session[];
   allowCancel?: boolean;
 }) {
+  const { t } = useT();
   const me = trpc.auth.me.useQuery();
   const utils = trpc.useUtils();
   const toast = useToast();
   const cancel = trpc.sessions.cancel.useMutation({
     onSuccess: () => {
       utils.sessions.mine.invalidate();
-      toast.info("Session cancelled");
+      toast.info(t("sessionList.sessionCancelled"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -66,7 +68,7 @@ export function SessionList({
     onSuccess: () => {
       utils.sessions.mine.invalidate();
       setEditing(null);
-      toast.success("Session rescheduled");
+      toast.success(t("sessionList.sessionRescheduled"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -74,7 +76,7 @@ export function SessionList({
   const [editing, setEditing] = useState<{ id: number; when: string } | null>(null);
 
   const myId = me.data?.id ?? 0;
-  const myName = me.data?.name ?? me.data?.email ?? "Me";
+  const myName = me.data?.name ?? me.data?.email ?? t("sessionList.meFallback");
   const orgPublicId = me.data?.activeOrganization?.publicId ?? "";
 
   if (sessions.length === 0) return null;
@@ -112,17 +114,18 @@ export function SessionList({
                   {state === "live" && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-xs font-semibold text-emerald-600">
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                      Live now
+                      {t("sessionList.liveNow")}
                     </span>
                   )}
                   {state === "soon" && (
                     <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-semibold text-gold">
-                      Starts in {minsToStart}m
+                      {t("sessionList.startsIn", { n: minsToStart })}
                     </span>
                   )}
                 </div>
                 <div className="text-sm text-ink/55">
-                  with {other} · {formatWhen(when)} · {s.durationMinutes}m
+                  {t("sessionList.with", { name: other ?? "" })} · {formatWhen(when)} ·{" "}
+                  {t("sessionList.duration", { n: s.durationMinutes })}
                 </div>
               </div>
               <Button
@@ -130,7 +133,7 @@ export function SessionList({
                 variant={state ? "primary" : "secondary"}
                 onClick={() => setCall({ room })}
               >
-                Join
+                {t("sessionList.join")}
               </Button>
               {allowCancel && (
                 <>
@@ -144,14 +147,14 @@ export function SessionList({
                         ? "border-navy-900 bg-navy-900 text-white"
                         : "border-gray-200 text-ink/50 hover:bg-gray-50",
                     )}
-                    aria-label="Reschedule session"
+                    aria-label={t("sessionList.reschedule")}
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => cancel.mutate({ id: s.id })}
                     className="rounded-lg border border-gray-200 p-2 text-ink/50 transition hover:bg-gray-50"
-                    aria-label="Cancel session"
+                    aria-label={t("sessionList.cancel")}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -168,7 +171,7 @@ export function SessionList({
                 }}
                 className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:items-center"
               >
-                <span className="text-sm font-medium text-ink/70">New time:</span>
+                <span className="text-sm font-medium text-ink/70">{t("sessionList.newTime")}</span>
                 <TextInput
                   type="datetime-local"
                   value={editing.when}
@@ -176,7 +179,7 @@ export function SessionList({
                   className="sm:w-60"
                 />
                 <Button type="submit" disabled={reschedule.isPending || !editing.when}>
-                  {reschedule.isPending ? "Saving…" : "Reschedule"}
+                  {reschedule.isPending ? t("sessionList.saving") : t("sessionList.rescheduleBtn")}
                 </Button>
               </form>
             )}

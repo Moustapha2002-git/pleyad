@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { Celebration } from "../components/Celebration";
 import { useToast } from "../components/Toast";
 import { YouTubePlayer } from "../components/YouTubePlayer";
@@ -23,6 +24,7 @@ export default function LearnWorkspace({
   resourceId: number;
 }) {
   const [, navigate] = useLocation();
+  const { t } = useT();
   const toast = useToast();
   const utils = trpc.useUtils();
 
@@ -41,18 +43,20 @@ export default function LearnWorkspace({
 
   const base = kind === "path" ? "/paths" : "/playlists";
 
-  if (q.isLoading) return <Spinner label="Loading workspace…" />;
+  if (q.isLoading) return <Spinner label={t("learnWorkspace.loading")} />;
   const p = q.data;
-  if (!p) return <p className="text-ink/50">Not found.</p>;
+  if (!p) return <p className="text-ink/50">{t("learnWorkspace.notFound")}</p>;
 
   const items = p.items;
   const active = items.find((i) => i.resourceId === resourceId) ?? items[0];
   if (!active) {
     return (
       <Card className="p-6 text-ink/50">
-        This {kind} has no skills yet.{" "}
+        {kind === "path"
+          ? t("learnWorkspace.noSkillsPath")
+          : t("learnWorkspace.noSkillsPlaylist")}{" "}
         <Link to={`${base}/${id}`} className="font-medium text-navy underline">
-          Back
+          {t("learnWorkspace.back")}
         </Link>
       </Card>
     );
@@ -87,7 +91,7 @@ export default function LearnWorkspace({
             q.refetch();
             utils.paths.progression.invalidate();
             if (willComplete) setCelebrate(true);
-            else toast.success("Skill mastered ✓");
+            else toast.success(t("learnWorkspace.skillMastered"));
           }
         },
         onError: (e: { message: string }) => toast.error(e.message),
@@ -105,7 +109,7 @@ export default function LearnWorkspace({
           <ArrowLeft className="h-4 w-4" /> {p.title}
         </Link>
         <span className="text-sm text-ink/45">
-          Lesson {idx + 1} of {items.length}
+          {t("learnWorkspace.lessonOf", { n: idx + 1, total: items.length })}
         </span>
       </div>
 
@@ -135,8 +139,7 @@ export default function LearnWorkspace({
                 </div>
                 <h2 className="mt-2 text-xl font-bold">{active.title}</h2>
                 <p className="mx-auto mt-2 max-w-md text-sm text-white/70">
-                  This course lives on {meta.label} — it opens in a new tab, and your progress
-                  stays tracked right here.
+                  {t("learnWorkspace.opensExternal", { platform: meta.label })}
                 </p>
                 {active.url && (
                   <a
@@ -145,7 +148,7 @@ export default function LearnWorkspace({
                     rel="noreferrer"
                     className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-navy-900 transition hover:bg-gray-100"
                   >
-                    Open course <ExternalLink className="h-4 w-4" />
+                    {t("learnWorkspace.openCourse")} <ExternalLink className="h-4 w-4" />
                   </a>
                 )}
               </div>
@@ -161,7 +164,7 @@ export default function LearnWorkspace({
                   <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium">
                     {meta.label}
                   </span>
-                  {ytId && <span>progress tracks automatically while you watch</span>}
+                  {ytId && <span>{t("learnWorkspace.tracksAuto")}</span>}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -171,7 +174,7 @@ export default function LearnWorkspace({
                   disabled={!prev}
                   onClick={() => prev && goTo(prev.resourceId)}
                 >
-                  Prev
+                  {t("learnWorkspace.prev")}
                 </Button>
                 <Button
                   variant="secondary"
@@ -179,7 +182,7 @@ export default function LearnWorkspace({
                   disabled={!next}
                   onClick={() => next && goTo(next.resourceId)}
                 >
-                  Next
+                  {t("learnWorkspace.next")}
                 </Button>
               </div>
             </div>
@@ -195,7 +198,7 @@ export default function LearnWorkspace({
               </span>
               {shownPct < 100 && (
                 <Button variant="secondary" onClick={() => save(100)}>
-                  Mark done
+                  {t("learnWorkspace.markDone")}
                 </Button>
               )}
             </div>
@@ -206,7 +209,7 @@ export default function LearnWorkspace({
         <aside className="space-y-2">
           <div className="flex items-baseline justify-between px-1">
             <h2 className="text-sm font-semibold text-navy-900">
-              {kind === "path" ? "Skills in this path" : "Courses"}
+              {kind === "path" ? t("learnWorkspace.railSkills") : t("learnWorkspace.railCourses")}
             </h2>
             <span className="text-xs text-ink/45">
               {p.completedCount}/{p.itemCount}
@@ -256,7 +259,7 @@ export default function LearnWorkspace({
                       it.done ? "text-emerald-600" : "text-ink/40",
                     )}
                   >
-                    {it.done ? "Mastered" : `${it.progress}%`}
+                    {it.done ? t("learnWorkspace.mastered") : `${it.progress}%`}
                   </span>
                 </span>
               </button>
@@ -267,8 +270,12 @@ export default function LearnWorkspace({
 
       {celebrate && (
         <Celebration
-          title={kind === "path" ? "Path complete!" : "Playlist complete!"}
-          message={`You finished "${p.title}". Your gauges just moved.`}
+          title={
+            kind === "path"
+              ? t("learnWorkspace.celebrateTitlePath")
+              : t("learnWorkspace.celebrateTitlePlaylist")
+          }
+          message={t("learnWorkspace.celebrateMsg", { title: p.title })}
           onClose={() => setCelebrate(false)}
         />
       )}
