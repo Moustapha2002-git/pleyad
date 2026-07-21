@@ -1,6 +1,7 @@
 import { Check, Rocket } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { Card, ProgressBar, cn } from "./ui";
 
 /**
@@ -9,6 +10,7 @@ import { Card, ProgressBar, cn } from "./ui";
  * card disappears on its own once everything is done.
  */
 export function GettingStarted() {
+  const { t } = useT();
   const me = trpc.auth.me.useQuery();
   const mentors = trpc.mentor.myMentors.useQuery();
   const assigned = trpc.paths.assigned.useQuery();
@@ -31,22 +33,22 @@ export function GettingStarted() {
   const steps: { key: string; label: string; hint: string; to: string; done: boolean }[] = [
     {
       key: "mentor",
-      label: "Meet your mentor",
-      hint: "Say hello and see your sessions",
+      label: t("gettingStarted.meetMentor"),
+      hint: t("gettingStarted.meetMentorHint"),
       to: "/mentoring",
       done: (mentors.data ?? []).length > 0,
     },
     {
       key: "path",
-      label: "Start your first path",
-      hint: "Complete a step in an assigned path",
+      label: t("gettingStarted.startPath"),
+      hint: t("gettingStarted.startPathHint"),
       to: "/paths",
       done: (assigned.data ?? []).some((p) => p.progress > 0),
     },
     {
       key: "playlist",
-      label: "Build your own playlist",
-      hint: "Collect courses you want to learn",
+      label: t("gettingStarted.buildPlaylist"),
+      hint: t("gettingStarted.buildPlaylistHint"),
       to: "/paths",
       done: (playlists.data ?? []).length > 0,
     },
@@ -54,8 +56,8 @@ export function GettingStarted() {
       ? [
           {
             key: "quiz",
-            label: "Take your first quiz",
-            hint: "Show your mentor what you know",
+            label: t("gettingStarted.takeQuiz"),
+            hint: t("gettingStarted.takeQuizHint"),
             to: "/mentoring",
             done: (quizzes.data ?? []).some((q) => q.taken),
           },
@@ -73,9 +75,9 @@ export function GettingStarted() {
           <Rocket className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-navy-900">Getting started</h3>
+          <h3 className="font-semibold text-navy-900">{t("gettingStarted.title")}</h3>
           <p className="text-xs text-ink/55">
-            {doneCount} of {steps.length} done — a couple of steps and you're all set.
+            {t("gettingStarted.progress", { done: doneCount, total: steps.length })}
           </p>
         </div>
         <div className="w-24">

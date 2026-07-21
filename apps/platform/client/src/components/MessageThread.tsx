@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { Button, Card, TextInput, cn } from "./ui";
 
-function dayLabel(d: string | Date) {
+function dayLabel(d: string | Date, t: (k: string) => string) {
   const x = new Date(d);
   const today = new Date();
   const yesterday = new Date(today.getTime() - 86_400_000);
-  if (x.toDateString() === today.toDateString()) return "Today";
-  if (x.toDateString() === yesterday.toDateString()) return "Yesterday";
+  if (x.toDateString() === today.toDateString()) return t("messages.today");
+  if (x.toDateString() === yesterday.toDateString()) return t("messages.yesterday");
   return x.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 const timeLabel = (d: string | Date) =>
@@ -17,6 +18,7 @@ const timeLabel = (d: string | Date) =>
 /** Two-way 1:1 message thread with another user in the active workspace.
  *  Used by both the mentor (LearnerProfile) and the learner (Mentoring). */
 export function MessageThread({ withUserId, title }: { withUserId: number; title?: string }) {
+  const { t } = useT();
   const me = trpc.auth.me.useQuery();
   const thread = trpc.messages.thread.useQuery({ withUserId }, { refetchInterval: 15_000 });
   const utils = trpc.useUtils();
@@ -49,11 +51,11 @@ export function MessageThread({ withUserId, title }: { withUserId: number; title
 
   return (
     <Card className="p-6">
-      <h2 className="mb-4 text-base font-semibold text-navy-900">{title ?? "Messages"}</h2>
+      <h2 className="mb-4 text-base font-semibold text-navy-900">{title ?? t("messages.title")}</h2>
       <div
         className="mb-4 flex max-h-80 flex-col gap-1.5 overflow-y-auto pr-1"
         role="log"
-        aria-label="Message history"
+        aria-label={t("messages.history")}
       >
         {messages.length > 0 ? (
           messages.map((m, i) => {
@@ -68,7 +70,7 @@ export function MessageThread({ withUserId, title }: { withUserId: number; title
                   <div className="my-2 flex items-center gap-3" aria-hidden>
                     <span className="h-px flex-1 bg-gray-100" />
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-ink/35">
-                      {dayLabel(m.createdAt)}
+                      {dayLabel(m.createdAt, t)}
                     </span>
                     <span className="h-px flex-1 bg-gray-100" />
                   </div>
@@ -97,7 +99,7 @@ export function MessageThread({ withUserId, title }: { withUserId: number; title
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy/5 text-navy/50">
               <MessageSquare className="h-5 w-5" />
             </span>
-            <p className="text-sm text-ink/45">No messages yet. Say hello 👋</p>
+            <p className="text-sm text-ink/45">{t("messages.empty")}</p>
           </div>
         )}
         <div ref={bottomRef} />
@@ -112,12 +114,12 @@ export function MessageThread({ withUserId, title }: { withUserId: number; title
         <TextInput
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="Write a message…"
-          aria-label="Message text"
+          placeholder={t("messages.placeholder")}
+          aria-label={t("messages.messageText")}
           className="flex-1"
         />
         <Button type="submit" icon={Send} disabled={send.isPending || !body.trim()}>
-          Send
+          {t("messages.send")}
         </Button>
       </form>
     </Card>

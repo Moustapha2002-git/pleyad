@@ -13,6 +13,7 @@ import {
   Video,
 } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { useToast } from "../components/Toast";
 import { VideoCall } from "../components/VideoCall";
 import { MessageThread } from "../components/MessageThread";
@@ -55,14 +56,15 @@ function sessionState(s: { scheduledAt: string | Date; durationMinutes: number }
 }
 
 const TABS = [
-  { key: "overview", label: "Overview" },
-  { key: "tasks", label: "Tasks" },
-  { key: "quizzes", label: "Quizzes" },
-  { key: "messages", label: "Messages" },
+  { key: "overview", labelKey: "tabOverview" },
+  { key: "tasks", labelKey: "tabTasks" },
+  { key: "quizzes", labelKey: "tabQuizzes" },
+  { key: "messages", labelKey: "tabMessages" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
 export default function Mentoring() {
+  const { t } = useT();
   const me = trpc.auth.me.useQuery();
   const mentors = trpc.mentor.myMentors.useQuery();
   const utils = trpc.useUtils();
@@ -81,7 +83,7 @@ export default function Mentoring() {
   const setTaskDone = trpc.coaching.setTaskDone.useMutation({
     onSuccess: (_r, vars) => {
       utils.coaching.myTasks.invalidate();
-      if (vars.done) toast.success("Task completed 🎉");
+      if (vars.done) toast.success(t("mentoring.taskCompleted"));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -90,7 +92,7 @@ export default function Mentoring() {
 
   const orgPublicId = me.data?.activeOrganization?.publicId ?? "";
   const myId = me.data?.id ?? 0;
-  const myName = me.data?.name ?? me.data?.email ?? "Learner";
+  const myName = me.data?.name ?? me.data?.email ?? t("roles.member");
   const allMentors = mentors.data ?? [];
   const mentor = allMentors.find((m) => m.id === selectedMentorId) ?? allMentors[0];
 
@@ -125,8 +127,8 @@ export default function Mentoring() {
   if (mentors.isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Mentoring" subtitle="Your mentor in this workspace." />
-        <Spinner label="Loading…" />
+        <PageHeader title={t("mentoring.title")} subtitle={t("mentoring.subtitleWorkspace")} />
+        <Spinner label={t("mentoring.loading")} />
       </div>
     );
   }
@@ -134,11 +136,11 @@ export default function Mentoring() {
   if (!mentor) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Mentoring" subtitle="Your mentor in this workspace." />
+        <PageHeader title={t("mentoring.title")} subtitle={t("mentoring.subtitleWorkspace")} />
         <EmptyState
           icon={GraduationCap}
-          title="No mentor assigned yet"
-          description="When a mentor is assigned to you, they'll appear here."
+          title={t("mentoring.noMentorTitle")}
+          description={t("mentoring.noMentorDesc")}
         />
       </div>
     );
@@ -153,11 +155,11 @@ export default function Mentoring() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Mentoring"
+        title={t("mentoring.title")}
         subtitle={
           allMentors.length > 1
-            ? `You have ${allMentors.length} mentors in this workspace.`
-            : "Your mentor, your tasks, your progress."
+            ? t("mentoring.subtitleMany", { n: allMentors.length })
+            : t("mentoring.subtitleOne")
         }
       />
 
@@ -189,7 +191,7 @@ export default function Mentoring() {
       <Card className="overflow-hidden">
         <div className="bg-navy-950 px-5 pb-12 pt-5">
           <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/40">
-            Your mentor
+            {t("mentoring.yourMentor")}
           </div>
         </div>
         <div className="px-5 pb-5">
@@ -208,10 +210,10 @@ export default function Mentoring() {
             </div>
             <div className="flex gap-2 pt-2">
               <Button variant="secondary" icon={MessageSquare} onClick={() => setTab("messages")}>
-                Message
+                {t("mentoring.message")}
               </Button>
               <Button icon={Video} onClick={startCall}>
-                Video call
+                {t("mentoring.videoCall")}
               </Button>
             </div>
           </div>
@@ -252,7 +254,7 @@ export default function Mentoring() {
                 aria-expanded={showBio}
                 className="inline-flex items-center gap-1 text-xs font-medium text-navy/60 transition hover:text-navy"
               >
-                About {mentor.name?.split(" ")[0] ?? "your mentor"}
+                {t("mentoring.about", { name: mentor.name?.split(" ")[0] ?? t("mentoring.yourMentorFallback") })}
                 <ChevronDown
                   className={cn("h-3.5 w-3.5 transition-transform", showBio && "rotate-180")}
                 />
@@ -271,15 +273,15 @@ export default function Mentoring() {
 
       {/* Tab bar */}
       <div className="flex flex-wrap gap-1 border-b border-gray-200" role="tablist">
-        {TABS.map((t) => {
-          const active = tab === t.key;
-          const count = tabCount[t.key];
+        {TABS.map((tb) => {
+          const active = tab === tb.key;
+          const count = tabCount[tb.key];
           return (
             <button
-              key={t.key}
+              key={tb.key}
               role="tab"
               aria-selected={active}
-              onClick={() => setTab(t.key)}
+              onClick={() => setTab(tb.key)}
               className={cn(
                 "-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-navy/30",
                 active
@@ -287,7 +289,7 @@ export default function Mentoring() {
                   : "border-transparent text-ink/55 hover:text-navy",
               )}
             >
-              {t.label}
+              {t(`mentoring.${tb.labelKey}`)}
               {count != null && count > 0 && (
                 <span
                   className={cn(
@@ -335,17 +337,17 @@ export default function Mentoring() {
                         sessState === "live" ? "text-emerald-600" : "text-gold",
                       )}
                     >
-                      Next session
+                      {t("mentoring.nextSession")}
                     </span>
                     {sessState === "live" && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-600">
                         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                        Live now
+                        {t("mentoring.liveNow")}
                       </span>
                     )}
                     {sessState === "soon" && (
                       <span className="rounded-full bg-gold/20 px-2 py-0.5 text-xs font-semibold text-gold">
-                        Starts in {minsToStart}m
+                        {t("mentoring.startsIn", { n: minsToStart })}
                       </span>
                     )}
                   </div>
@@ -354,12 +356,12 @@ export default function Mentoring() {
                 </div>
               </div>
               <Button icon={Video} variant={sessState ? "primary" : "secondary"} onClick={startCall}>
-                Join
+                {t("mentoring.join")}
               </Button>
             </Card>
           ) : (
             <Card className="p-5 text-sm text-ink/55">
-              No sessions scheduled yet — your mentor will set one up.
+              {t("mentoring.noSessions")}
             </Card>
           )}
 
@@ -378,7 +380,7 @@ export default function Mentoring() {
                     {openTaskCount}
                   </span>
                   <span className="text-xs text-ink/55">
-                    task{openTaskCount === 1 ? "" : "s"} to do
+                    {openTaskCount === 1 ? t("mentoring.taskToDo") : t("mentoring.tasksToDo")}
                   </span>
                 </span>
                 <ChevronRight className="ml-auto h-4 w-4 text-ink/30" />
@@ -395,7 +397,7 @@ export default function Mentoring() {
                     {quizzesToTake}
                   </span>
                   <span className="text-xs text-ink/55">
-                    quiz{quizzesToTake === 1 ? "" : "zes"} to take
+                    {quizzesToTake === 1 ? t("mentoring.quizToTake") : t("mentoring.quizzesToTake")}
                   </span>
                 </span>
                 <ChevronRight className="ml-auto h-4 w-4 text-ink/30" />
@@ -406,7 +408,7 @@ export default function Mentoring() {
           {/* Feedback */}
           <Card className="p-6">
             <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
-              <MessageSquareQuote className="h-4 w-4" /> Feedback from your mentor
+              <MessageSquareQuote className="h-4 w-4" /> {t("mentoring.feedbackTitle")}
             </h2>
             {feedback.data && feedback.data.length > 0 ? (
               <div className="space-y-2">
@@ -422,10 +424,11 @@ export default function Mentoring() {
                   >
                     <p className="text-sm leading-relaxed text-ink">{f.body}</p>
                     <p className="mt-1.5 text-xs text-ink/40">
-                      {f.mentorName ?? "Mentor"} · {new Date(f.createdAt).toLocaleDateString()}
+                      {f.mentorName ?? t("mentoring.mentorFallback")} ·{" "}
+                      {new Date(f.createdAt).toLocaleDateString()}
                       {i === 0 && (
                         <span className="ml-2 rounded-full bg-gold/15 px-1.5 py-0.5 text-[10px] font-semibold text-gold">
-                          Latest
+                          {t("mentoring.latest")}
                         </span>
                       )}
                     </p>
@@ -433,9 +436,7 @@ export default function Mentoring() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-ink/50">
-                No feedback yet — it will appear here after your mentor reviews your work.
-              </p>
+              <p className="text-sm text-ink/50">{t("mentoring.noFeedback")}</p>
             )}
           </Card>
         </div>
@@ -446,7 +447,7 @@ export default function Mentoring() {
         <Card className="p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-base font-semibold text-navy-900">
-              <ClipboardCheck className="h-4 w-4" /> Your tasks
+              <ClipboardCheck className="h-4 w-4" /> {t("mentoring.yourTasks")}
             </h2>
             {totalTasks > 0 && (
               <div className="flex items-center gap-2">
@@ -463,20 +464,24 @@ export default function Mentoring() {
           </div>
           {sortedTasks.length > 0 ? (
             <ul className="space-y-2">
-              {sortedTasks.map((t) => (
+              {sortedTasks.map((task) => (
                 <li
-                  key={t.id}
+                  key={task.id}
                   className={cn(
                     "flex items-start gap-3 rounded-xl border p-3 transition",
-                    t.status === "done" ? "border-gray-100 opacity-70" : "border-gray-100",
+                    task.status === "done" ? "border-gray-100 opacity-70" : "border-gray-100",
                   )}
                 >
                   <button
-                    onClick={() => setTaskDone.mutate({ taskId: t.id, done: t.status !== "done" })}
-                    aria-label={t.status === "done" ? "Mark not done" : "Mark done"}
+                    onClick={() =>
+                      setTaskDone.mutate({ taskId: task.id, done: task.status !== "done" })
+                    }
+                    aria-label={
+                      task.status === "done" ? t("mentoring.markNotDone") : t("mentoring.markDone")
+                    }
                     className={cn(
                       "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition",
-                      t.status === "done"
+                      task.status === "done"
                         ? "border-emerald-500 bg-emerald-500 text-white"
                         : "border-gray-300 text-transparent hover:border-navy/50",
                     )}
@@ -487,33 +492,37 @@ export default function Mentoring() {
                     <div className="flex items-center gap-2">
                       <span
                         className={
-                          t.status === "done"
+                          task.status === "done"
                             ? "font-medium text-ink/40 line-through"
                             : "font-medium text-navy-900"
                         }
                       >
-                        {t.title}
+                        {task.title}
                       </span>
-                      {t.status !== "done" && dueLabel(t.dueAt) && (
+                      {task.status !== "done" && dueLabel(task.dueAt) && (
                         <span
                           className={cn(
                             "rounded-full px-2 py-0.5 text-xs font-medium",
-                            isOverdue(t.dueAt)
+                            isOverdue(task.dueAt)
                               ? "bg-red-500/12 text-red-600"
                               : "bg-gold/15 text-gold",
                           )}
                         >
-                          {isOverdue(t.dueAt) ? "Overdue" : `Due ${dueLabel(t.dueAt)}`}
+                          {isOverdue(task.dueAt)
+                            ? t("dashboard.overdue")
+                            : t("dashboard.due", { date: dueLabel(task.dueAt) ?? "" })}
                         </span>
                       )}
                     </div>
-                    {t.instructions && <p className="mt-1 text-sm text-ink/60">{t.instructions}</p>}
+                    {task.instructions && (
+                      <p className="mt-1 text-sm text-ink/60">{task.instructions}</p>
+                    )}
                   </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-ink/50">No tasks yet — your mentor will add some.</p>
+            <p className="text-sm text-ink/50">{t("mentoring.noTasks")}</p>
           )}
         </Card>
       )}
@@ -522,7 +531,7 @@ export default function Mentoring() {
       {tab === "quizzes" && (
         <Card className="p-6">
           <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-navy-900">
-            <ListChecks className="h-4 w-4" /> Quizzes
+            <ListChecks className="h-4 w-4" /> {t("mentoring.quizzesTitle")}
           </h2>
           {takingQuiz !== null ? (
             <QuizTaker
@@ -547,12 +556,14 @@ export default function Mentoring() {
                       <span className="font-medium text-navy-900">{q.title}</span>
                       {!q.taken && (
                         <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[11px] font-semibold text-gold">
-                          New
+                          {t("mentoring.newBadge")}
                         </span>
                       )}
                     </div>
                     <span className="text-xs text-ink/50">
-                      {q.questionCount} question{q.questionCount === 1 ? "" : "s"}
+                      {q.questionCount === 1
+                        ? t("mentoring.question", { n: q.questionCount })
+                        : t("mentoring.questions", { n: q.questionCount })}
                     </span>
                   </div>
                   {q.taken && (
@@ -571,13 +582,13 @@ export default function Mentoring() {
                     variant={q.taken ? "secondary" : "primary"}
                     onClick={() => setTakingQuiz(q.id)}
                   >
-                    {q.taken ? "Retake" : "Take quiz"}
+                    {q.taken ? t("mentoring.retake") : t("mentoring.takeQuiz")}
                   </Button>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-ink/50">No quizzes yet.</p>
+            <p className="text-sm text-ink/50">{t("mentoring.noQuizzes")}</p>
           )}
         </Card>
       )}
@@ -586,7 +597,7 @@ export default function Mentoring() {
       {tab === "messages" && (
         <MessageThread
           withUserId={mentor.id}
-          title={`Messages with ${mentor.name ?? "your mentor"}`}
+          title={t("mentoring.messagesWith", { name: mentor.name ?? t("mentoring.yourMentorFallback") })}
         />
       )}
     </div>

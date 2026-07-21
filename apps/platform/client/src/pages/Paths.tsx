@@ -14,6 +14,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "../lib/trpc";
+import { useT } from "../lib/i18n";
 import { PathCard } from "../components/PathCard";
 import type { PathCardData } from "../components/PathCard";
 import { useToast } from "../components/Toast";
@@ -85,6 +86,7 @@ function StatTile({
 
 export default function Paths() {
   const [, navigate] = useLocation();
+  const { t } = useT();
   const me = trpc.auth.me.useQuery();
   const pathsQ = trpc.paths.list.useQuery();
   const assignedQ = trpc.paths.assigned.useQuery();
@@ -194,16 +196,18 @@ export default function Paths() {
   return (
     <div className="space-y-7">
       <PageHeader
-        title="My Learning"
+        title={showPlaylists ? t("learning.title") : t("learning.titleAuthor")}
         subtitle={
           isTeamLearner
-            ? "Everything your mentor assigned — and what to do next."
-            : "Your paths and playlists, and what to do next."
+            ? t("learning.subtitleLearner")
+            : showPlaylists
+              ? t("learning.subtitlePersonal")
+              : t("learning.subtitleAuthor")
         }
         action={
           !isTeamLearner ? (
             <Button icon={Plus} variant="secondary" onClick={() => setShowCreate((s) => !s)}>
-              {showCreate ? "Close" : "New path"}
+              {showCreate ? t("common.close") : t("learning.newPath")}
             </Button>
           ) : undefined
         }
@@ -222,7 +226,7 @@ export default function Paths() {
             <TextInput
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Path title (e.g. Junior Developer Training)"
+              placeholder={t("learning.pathTitlePlaceholder")}
               aria-label="New path title"
             />
             <div className="flex flex-wrap gap-2">
@@ -244,7 +248,7 @@ export default function Paths() {
               ))}
             </div>
             <Button type="submit" disabled={!title.trim() || create.isPending}>
-              {create.isPending ? "Creating…" : "Create path"}
+              {create.isPending ? t("learning.creating") : t("learning.createPath")}
             </Button>
           </form>
         </Card>
@@ -276,12 +280,12 @@ export default function Paths() {
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 p-5 sm:p-6">
                     <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-gold">
-                      {hero.progress > 0 ? "Continue learning" : "Start learning"}
+                      {hero.progress > 0 ? t("learning.heroContinue") : t("learning.heroStart")}
                     </div>
                     <h2 className="text-xl font-bold leading-tight">{hero.title}</h2>
                     {hero.nextSkill && (
                       <p className="truncate text-sm text-white/60">
-                        Next lesson: {hero.nextSkill.title}
+                        {t("learning.heroNext", { title: hero.nextSkill.title })}
                       </p>
                     )}
                     <div className="mt-1 flex items-center gap-3">
@@ -299,7 +303,7 @@ export default function Paths() {
                         className="inline-flex items-center gap-2 rounded-xl bg-gold px-5 py-2.5 text-sm font-bold text-navy-950 transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-gold/60"
                       >
                         <Play className="h-4 w-4" fill="currentColor" />
-                        {hero.progress > 0 ? "Resume learning" : "Start now"}
+                        {hero.progress > 0 ? t("learning.heroResume") : t("learning.heroStartNow")}
                       </Link>
                     </div>
                   </div>
@@ -310,29 +314,29 @@ export default function Paths() {
 
           {/* ── Stats strip ────────────────────────────────────────── */}
           <section aria-label="Learning statistics" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <StatTile icon={BookOpen} value={stats.total} label="Learning paths" />
+            <StatTile icon={BookOpen} value={stats.total} label={t("learning.statPaths")} />
             <StatTile
               icon={Flame}
               value={stats.inProgress}
-              label="In progress"
+              label={t("learning.statInProgress")}
               tone="bg-gold/15 text-gold"
             />
             <StatTile
               icon={CheckCircle2}
               value={stats.completed}
-              label="Completed"
+              label={t("learning.statCompleted")}
               tone="bg-emerald-500/12 text-emerald-600"
             />
             <StatTile
               icon={Award}
               value={stats.skillsMastered}
-              label="Skills mastered"
+              label={t("learning.statSkills")}
               tone="bg-dim-knowledge/10 text-dim-knowledge"
             />
             <StatTile
               icon={ListChecks}
               value={avgQuiz != null ? `${avgQuiz}%` : "—"}
-              label="Avg quiz score"
+              label={t("learning.statQuiz")}
               tone="bg-dim-human/10 text-dim-human"
             />
           </section>
@@ -342,8 +346,8 @@ export default function Paths() {
             <div className="flex gap-1 border-b border-gray-200" role="tablist">
               {(
                 [
-                  { key: "paths", label: isTeamLearner ? "Assigned paths" : "Paths", icon: RouteIcon },
-                  { key: "playlists", label: "My Playlists", icon: ListMusic },
+                  { key: "paths", label: isTeamLearner ? t("learning.tabAssigned") : t("learning.tabPaths"), icon: RouteIcon },
+                  { key: "playlists", label: t("learning.tabPlaylists"), icon: ListMusic },
                 ] as const
               ).map((t) => {
                 const active = tab === t.key;
@@ -376,7 +380,7 @@ export default function Paths() {
                 <TextInput
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search your learning…"
+                  placeholder={t("learning.searchPlaceholder")}
                   aria-label="Search paths"
                   className="pl-9"
                 />
@@ -386,10 +390,10 @@ export default function Paths() {
                 onChange={(e) => setSort(e.target.value as Sort)}
                 aria-label="Sort paths"
               >
-                <option value="recent">Sort: Recently active</option>
-                <option value="due">Sort: Due first</option>
-                <option value="progress">Sort: Progress</option>
-                <option value="title">Sort: Title</option>
+                <option value="recent">{t("learning.sortRecent")}</option>
+                <option value="due">{t("learning.sortDue")}</option>
+                <option value="progress">{t("learning.sortProgress")}</option>
+                <option value="title">{t("learning.sortTitle")}</option>
               </Select>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -405,7 +409,7 @@ export default function Paths() {
                       : "border-gray-200 text-ink/60 hover:border-navy/40",
                   )}
                 >
-                  {f.label}
+                  {t("learning.filter" + f.key.replace(/(^.|_.)/g, (m) => m.replace("_", "").toUpperCase()))}
                 </button>
               ))}
               <span className="mx-1 hidden h-4 w-px bg-gray-200 sm:block" aria-hidden />
@@ -421,7 +425,7 @@ export default function Paths() {
                       : "border-gray-200 text-ink/60 hover:border-gold/60",
                   )}
                 >
-                  {d.label}
+                  {d.key === "all" ? t("learning.allSkills") : d.label}
                 </button>
               ))}
             </div>
@@ -443,23 +447,23 @@ export default function Paths() {
             ) : (
               <EmptyState
                 icon={RouteIcon}
-                title={rows.length > 0 ? "Nothing matches these filters" : "No paths yet"}
+                title={rows.length > 0 ? t("learning.noMatchTitle") : t("learning.noPathsTitle")}
                 description={
                   rows.length > 0
-                    ? "Try a different search or clear the filters."
+                    ? t("learning.noMatchDesc")
                     : isTeamLearner
-                      ? "Your mentor will assign learning paths here — say hello meanwhile."
-                      : "Create your first learning path to start growing your three dimensions."
+                      ? t("learning.noPathsAssignedDesc")
+                      : t("learning.noPathsPersonalDesc")
                 }
                 action={
                   rows.length === 0 ? (
                     isTeamLearner ? (
                       <Link to="/mentoring">
-                        <Button>Meet your mentor</Button>
+                        <Button>{t("learning.meetMentorBtn")}</Button>
                       </Link>
                     ) : (
                       <Button icon={Plus} onClick={() => setShowCreate(true)}>
-                        Create your first path
+                        {t("learning.createFirstPath")}
                       </Button>
                     )
                   ) : undefined
@@ -481,12 +485,12 @@ export default function Paths() {
                   <TextInput
                     value={plTitle}
                     onChange={(e) => setPlTitle(e.target.value)}
-                    placeholder="New playlist (e.g. My frontend deep-dive)"
+                    placeholder={t("learning.playlistPlaceholder")}
                     aria-label="New playlist name"
                     className="sm:flex-1"
                   />
                   <Button type="submit" icon={Plus} disabled={createPlaylist.isPending}>
-                    {createPlaylist.isPending ? "Creating…" : "New playlist"}
+                    {createPlaylist.isPending ? t("learning.creating") : t("learning.newPlaylist")}
                   </Button>
                 </form>
               </Card>
@@ -504,11 +508,11 @@ export default function Paths() {
               ) : (
                 <EmptyState
                   icon={ListMusic}
-                  title={playlists.length > 0 ? "Nothing matches these filters" : "No playlists yet"}
+                  title={playlists.length > 0 ? t("learning.noMatchTitle") : t("learning.noPlaylistsTitle")}
                   description={
                     playlists.length > 0
-                      ? "Try a different search or clear the filters."
-                      : "Collect courses from anywhere (YouTube, Coursera, edX…) and learn at your own pace."
+                      ? t("learning.noMatchDesc")
+                      : t("learning.noPlaylistsDesc")
                   }
                 />
               )}
